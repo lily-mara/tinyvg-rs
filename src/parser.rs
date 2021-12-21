@@ -211,3 +211,22 @@ struct ScaleProperties {
     color_encoding: ColorEncoding,
     coordinate_range: CoordinateRange,
 }
+
+#[cfg(test)]
+mod tests {
+    use super::Parser;
+    use eyre::Result;
+    use std::fs::File;
+
+    #[test]
+    fn test_parser() -> Result<()> {
+        let file = File::open("data/everything.tvg")?;
+        let p = Parser::new(file);
+
+        let result = p.parse()?;
+
+        insta::assert_debug_snapshot!(result);
+
+        Ok(())
+    }
+}

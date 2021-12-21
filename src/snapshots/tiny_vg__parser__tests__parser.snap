@@ -1,0 +1,56 @@
+---
+source: src/parser.rs
+expression: result
+
+---
+File {
+    header: Header {
+        version: 1,
+        scale: 0,
+        color_encoding: Rgb565,
+        coordinate_range: Reduced,
+        width: 400,
+        height: 768,
+        color_count: 6,
+    },
+    color_table: [
+        Color {
+            red: 0.22580644,
+            green: 0.23809524,
+            blue: 0.67741936,
+            alpha: 1.0,
+        },
+        Color {
+            red: 0.67741936,
+            green: 0.8888889,
+            blue: 1.0,
+            alpha: 1.0,
+        },
+        Color {
+            red: 1.0,
+            green: 0.11111111,
+            blue: 0.48387095,
+            alpha: 1.0,
+        },
+        Color {
+            red: 0.0,
+            green: 0.8888889,
+            blue: 1.0,
+            alpha: 1.0,
+        },
+        Color {
+            red: 0.0,
+            green: 0.9206349,
+            blue: 1.0,
+            alpha: 1.0,
+        },
+        Color {
+            red: 0.0,
+            green: 0.8888889,
+            blue: 1.0,
+            alpha: 1.0,
+        },
+    ],
+    commands: [],
+    trailer: [],
+}
