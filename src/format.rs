@@ -1,6 +1,7 @@
 #[derive(Debug, PartialEq, Clone)]
 pub struct File {
     pub header: Header,
+    pub color_table: Vec<Color>,
 }
 
 #[derive(Debug, PartialEq, Clone, Copy)]
@@ -8,7 +9,6 @@ pub enum ColorEncoding {
     Rgba8888,
     Rgb565,
     RgbaF32,
-    Custom,
 }
 
 #[derive(Debug, PartialEq, Clone, Copy)]
@@ -21,6 +21,14 @@ pub enum CoordinateRange {
 
     // 32 bits
     Enhanced,
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub struct Color {
+    pub red: f32,
+    pub green: f32,
+    pub blue: f32,
+    pub alpha: f32,
 }
 
 #[derive(Debug, PartialEq, Clone)]

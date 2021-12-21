@@ -2,12 +2,13 @@ use nom::{
     bytes::complete::{tag, take_while},
     combinator::map,
     error::ErrorKind,
-    number::complete::{le_u16, le_u32, le_u8},
+    multi::count,
+    number::complete::{le_f32, le_u16, le_u32, le_u8},
     sequence::tuple,
     IResult,
 };
 
-use crate::format::{ColorEncoding, CoordinateRange, File, Header};
+use crate::format::{Color, ColorEncoding, CoordinateRange, File, Header};
 
 fn magic_number(input: &[u8]) -> IResult<&[u8], ()> {
     tag([0x72, 0x56])(input).map(|(rest, _)| (rest, ()))
@@ -46,7 +47,13 @@ fn scale_properties(input: &[u8]) -> IResult<&[u8], ScaleProperties> {
         0 => ColorEncoding::Rgba8888,
         1 => ColorEncoding::Rgb565,
         2 => ColorEncoding::RgbaF32,
-        3 => ColorEncoding::Custom,
+        3 => {
+            // TODO: make a better error message here - custom is unsupported
+            return Err(nom::Err::Failure(nom::error::Error::new(
+                input,
+                ErrorKind::Verify,
+            )));
+        }
         _ => {
             // TODO: make a better error message here
             return Err(nom::Err::Failure(nom::error::Error::new(
@@ -112,6 +119,59 @@ fn parse_header(input: &[u8]) -> IResult<&[u8], Header> {
     ))
 }
 
+fn parse_color_table(
+    color_encoding: ColorEncoding,
+    color_count: u32,
+) -> impl Fn(&[u8]) -> IResult<&[u8], Vec<Color>> {
+    move |input| match color_encoding {
+        ColorEncoding::Rgba8888 => count(color_8888, color_count as usize)(input),
+        ColorEncoding::RgbaF32 => count(color_f32, color_count as usize)(input),
+        ColorEncoding::Rgb565 => count(color_565, color_count as usize)(input),
+    }
+}
+
+fn color_8888(input: &[u8]) -> IResult<&[u8], Color> {
+    map(
+        tuple((le_u8, le_u8, le_u8, le_u8)),
+        |(red, green, blue, alpha)| Color {
+            red: red as f32 / 255.0,
+            green: green as f32 / 255.0,
+            blue: blue as f32 / 255.0,
+            alpha: alpha as f32 / 255.0,
+        },
+    )(input)
+}
+
+fn color_f32(input: &[u8]) -> IResult<&[u8], Color> {
+    map(
+        tuple((le_f32, le_f32, le_f32, le_f32)),
+        |(red, green, blue, alpha)| Color {
+            red,
+            green,
+            blue,
+            alpha,
+        },
+    )(input)
+}
+
+fn color_565(input: &[u8]) -> IResult<&[u8], Color> {
+    map(le_u16, |rgb| Color {
+        red: (((rgb & 0x001F) >> 0) as f32) / 31.0,
+        green: (((rgb & 0x07E0) >> 5) as f32) / 63.0,
+        blue: (((rgb & 0xF800) >> 11) as f32) / 31.0,
+        alpha: 1.0,
+    })(input)
+}
+
 pub fn parse_file(input: &[u8]) -> IResult<&[u8], File> {
-    map(tuple((parse_header,)), |(header,)| File { header })(input)
+    let (rest, header) = parse_header(input)?;
+    let (rest, color_table) = parse_color_table(header.color_encoding, header.color_count)(rest)?;
+
+    Ok((
+        rest,
+        File {
+            header,
+            color_table,
+        },
+    ))
 }
