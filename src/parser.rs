@@ -1,113 +1,188 @@
-use nom::{
-    bytes::complete::{tag, take_while},
-    combinator::map,
-    error::ErrorKind,
-    multi::count,
-    number::complete::{le_f32, le_u16, le_u32, le_u8},
-    sequence::tuple,
-    IResult,
-};
+use std::io::Read;
+
+use byteorder::{LittleEndian, ReadBytesExt};
+use eyre::{bail, ensure, Result};
 
 use crate::format::{Color, ColorEncoding, CoordinateRange, File, Header};
 
-fn magic_number(input: &[u8]) -> IResult<&[u8], ()> {
-    tag([0x72, 0x56])(input).map(|(rest, _)| (rest, ()))
-}
-
-fn version(input: &[u8]) -> IResult<&[u8], u8> {
-    le_u8(input)
-}
-
-struct ScaleProperties {
-    scale: u8,
-    color_encoding: ColorEncoding,
+pub struct Parser<R> {
+    reader: R,
     coordinate_range: CoordinateRange,
+    color_count: u32,
+    color_encoding: ColorEncoding,
 }
 
-fn scale_properties(input: &[u8]) -> IResult<&[u8], ScaleProperties> {
-    let (rest, x) = le_u8(input)?;
-    let scale = (x & 0xF0) >> 4;
-    let color_encoding = (x & 0b0000_1100) >> 2;
-    let coordinate_range = x & 0b0000_0011;
-
-    let coordinate_range = match coordinate_range {
-        0 => CoordinateRange::Default,
-        1 => CoordinateRange::Reduced,
-        2 => CoordinateRange::Enhanced,
-        _ => {
-            // TODO: make a better error message here
-            return Err(nom::Err::Failure(nom::error::Error::new(
-                input,
-                ErrorKind::Verify,
-            )));
+impl<R> Parser<R>
+where
+    R: Read,
+{
+    pub fn new(reader: R) -> Self {
+        Self {
+            reader,
+            coordinate_range: CoordinateRange::Default,
+            color_count: 0,
+            color_encoding: ColorEncoding::Rgb565,
         }
-    };
+    }
 
-    let color_encoding = match color_encoding {
-        0 => ColorEncoding::Rgba8888,
-        1 => ColorEncoding::Rgb565,
-        2 => ColorEncoding::RgbaF32,
-        3 => {
-            // TODO: make a better error message here - custom is unsupported
-            return Err(nom::Err::Failure(nom::error::Error::new(
-                input,
-                ErrorKind::Verify,
-            )));
-        }
-        _ => {
-            // TODO: make a better error message here
-            return Err(nom::Err::Failure(nom::error::Error::new(
-                input,
-                ErrorKind::Verify,
-            )));
-        }
-    };
+    fn magic_number(&mut self) -> Result<()> {
+        let b0 = self.reader.read_u8()?;
+        let b1 = self.reader.read_u8()?;
 
-    Ok((
-        rest,
-        ScaleProperties {
+        ensure!(
+            b0 == 0x72 && b1 == 0x56,
+            "tinyvg file must begin with magic number 0x72 0x56, found {:x} {:x}",
+            b0,
+            b1
+        );
+
+        Ok(())
+    }
+
+    fn version(&mut self) -> Result<u8> {
+        let version = self.reader.read_u8()?;
+
+        Ok(version)
+    }
+
+    fn scale_properties(&mut self) -> Result<ScaleProperties> {
+        let x = self.reader.read_u8()?;
+        let scale = (x & 0xF0) >> 4;
+        let color_encoding = (x & 0b0000_1100) >> 2;
+        let coordinate_range = x & 0b0000_0011;
+
+        let coordinate_range = match coordinate_range {
+            0 => CoordinateRange::Default,
+            1 => CoordinateRange::Reduced,
+            2 => CoordinateRange::Enhanced,
+            x => {
+                bail!("unrecognized coordinate type {}", x);
+            }
+        };
+
+        let color_encoding = match color_encoding {
+            0 => ColorEncoding::Rgba8888,
+            1 => ColorEncoding::Rgb565,
+            2 => ColorEncoding::RgbaF32,
+            3 => {
+                bail!("custom color encodings are not supported");
+            }
+            x => {
+                bail!("unrecognized color encoding {}", x);
+            }
+        };
+
+        Ok(ScaleProperties {
             scale,
             color_encoding,
             coordinate_range,
-        },
-    ))
-}
-
-fn width_height(coordinate_range: CoordinateRange) -> impl Fn(&[u8]) -> IResult<&[u8], u32> {
-    move |input| match coordinate_range {
-        CoordinateRange::Default => map(le_u8, |x| x as u32)(input),
-        CoordinateRange::Reduced => map(le_u16, |x| x as u32)(input),
-        CoordinateRange::Enhanced => map(le_u32, |x| x as u32)(input),
+        })
     }
-}
 
-fn var_uint(input: &[u8]) -> IResult<&[u8], u32> {
-    map(take_while(|b| (b & 0x80) == 0), |bytes: &[u8]| {
+    fn width_height(&mut self) -> Result<u32> {
+        match self.coordinate_range {
+            CoordinateRange::Default => {
+                let x = self.reader.read_u8()?;
+                Ok(x as u32)
+            }
+            CoordinateRange::Reduced => {
+                let x = self.reader.read_u16::<LittleEndian>()?;
+                Ok(x as u32)
+            }
+            CoordinateRange::Enhanced => {
+                let x = self.reader.read_u32::<LittleEndian>()?;
+                Ok(x as u32)
+            }
+        }
+    }
+
+    fn var_uint(&mut self) -> Result<u32> {
         let mut result = 0u32;
+        let mut count = 0;
 
-        for (i, b) in bytes.iter().enumerate() {
-            let b = *b as u32;
-            result |= (b & 0x7F) << (7 * i);
+        loop {
+            let b = self.reader.read_u8()? as u32;
+
+            result |= (b & 0x7F) << (7 * count);
+
+            if (b & 0x80) == 0 {
+                break;
+            }
+
+            count += 1;
         }
 
-        result
-    })(input)
-}
+        Ok(result)
+    }
 
-fn parse_header(input: &[u8]) -> IResult<&[u8], Header> {
-    let (rest, ((), version, scale_properties)) =
-        tuple((magic_number, version, scale_properties))(input)?;
+    fn parse_color_table(&mut self) -> Result<Vec<Color>> {
+        let mut colors = Vec::new();
 
-    let (rest, (width, height)) = tuple((
-        width_height(scale_properties.coordinate_range),
-        width_height(scale_properties.coordinate_range),
-    ))(rest)?;
+        for _ in 0..self.color_count {
+            colors.push(match self.color_encoding {
+                ColorEncoding::Rgba8888 => self.color_8888()?,
+                ColorEncoding::RgbaF32 => self.color_f32()?,
+                ColorEncoding::Rgb565 => self.color_565()?,
+            })
+        }
 
-    let (rest, color_count) = var_uint(rest)?;
+        Ok(colors)
+    }
 
-    Ok((
-        rest,
-        Header {
+    fn color_8888(&mut self) -> Result<Color> {
+        let red = self.reader.read_u8()?;
+        let green = self.reader.read_u8()?;
+        let blue = self.reader.read_u8()?;
+        let alpha = self.reader.read_u8()?;
+
+        Ok(Color {
+            red: red as f32 / 255.0,
+            green: green as f32 / 255.0,
+            blue: blue as f32 / 255.0,
+            alpha: alpha as f32 / 255.0,
+        })
+    }
+
+    fn color_f32(&mut self) -> Result<Color> {
+        let red = self.reader.read_f32::<LittleEndian>()?;
+        let green = self.reader.read_f32::<LittleEndian>()?;
+        let blue = self.reader.read_f32::<LittleEndian>()?;
+        let alpha = self.reader.read_f32::<LittleEndian>()?;
+
+        Ok(Color {
+            red,
+            green,
+            blue,
+            alpha,
+        })
+    }
+
+    fn color_565(&mut self) -> Result<Color> {
+        let rgb = self.reader.read_u16::<LittleEndian>()?;
+
+        Ok(Color {
+            red: (((rgb & 0x001F) >> 0) as f32) / 31.0,
+            green: (((rgb & 0x07E0) >> 5) as f32) / 63.0,
+            blue: (((rgb & 0xF800) >> 11) as f32) / 31.0,
+            alpha: 1.0,
+        })
+    }
+
+    fn header(&mut self) -> Result<Header> {
+        self.magic_number()?;
+        let version = self.version()?;
+        let scale_properties = self.scale_properties()?;
+
+        self.coordinate_range = scale_properties.coordinate_range;
+        let width = self.width_height()?;
+        let height = self.width_height()?;
+
+        let color_count = self.var_uint()?;
+
+        self.color_count = color_count;
+        self.color_encoding = scale_properties.color_encoding;
+
+        Ok(Header {
             version,
             scale: scale_properties.scale,
             color_encoding: scale_properties.color_encoding,
@@ -115,63 +190,24 @@ fn parse_header(input: &[u8]) -> IResult<&[u8], Header> {
             width,
             height,
             color_count,
-        },
-    ))
-}
+        })
+    }
 
-fn parse_color_table(
-    color_encoding: ColorEncoding,
-    color_count: u32,
-) -> impl Fn(&[u8]) -> IResult<&[u8], Vec<Color>> {
-    move |input| match color_encoding {
-        ColorEncoding::Rgba8888 => count(color_8888, color_count as usize)(input),
-        ColorEncoding::RgbaF32 => count(color_f32, color_count as usize)(input),
-        ColorEncoding::Rgb565 => count(color_565, color_count as usize)(input),
+    pub fn parse(mut self) -> Result<File> {
+        let header = self.header()?;
+        let color_table = self.parse_color_table()?;
+
+        Ok(File {
+            header,
+            color_table,
+            commands: Vec::new(),
+            trailer: Vec::new(),
+        })
     }
 }
 
-fn color_8888(input: &[u8]) -> IResult<&[u8], Color> {
-    map(
-        tuple((le_u8, le_u8, le_u8, le_u8)),
-        |(red, green, blue, alpha)| Color {
-            red: red as f32 / 255.0,
-            green: green as f32 / 255.0,
-            blue: blue as f32 / 255.0,
-            alpha: alpha as f32 / 255.0,
-        },
-    )(input)
-}
-
-fn color_f32(input: &[u8]) -> IResult<&[u8], Color> {
-    map(
-        tuple((le_f32, le_f32, le_f32, le_f32)),
-        |(red, green, blue, alpha)| Color {
-            red,
-            green,
-            blue,
-            alpha,
-        },
-    )(input)
-}
-
-fn color_565(input: &[u8]) -> IResult<&[u8], Color> {
-    map(le_u16, |rgb| Color {
-        red: (((rgb & 0x001F) >> 0) as f32) / 31.0,
-        green: (((rgb & 0x07E0) >> 5) as f32) / 63.0,
-        blue: (((rgb & 0xF800) >> 11) as f32) / 31.0,
-        alpha: 1.0,
-    })(input)
-}
-
-pub fn parse_file(input: &[u8]) -> IResult<&[u8], File> {
-    let (rest, header) = parse_header(input)?;
-    let (rest, color_table) = parse_color_table(header.color_encoding, header.color_count)(rest)?;
-
-    Ok((
-        rest,
-        File {
-            header,
-            color_table,
-        },
-    ))
+struct ScaleProperties {
+    scale: u8,
+    color_encoding: ColorEncoding,
+    coordinate_range: CoordinateRange,
 }

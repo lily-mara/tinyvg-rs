@@ -1,16 +1,13 @@
-use std::{fs::File, io::Read};
+use std::fs::File;
 
-use tiny_vg::parser::parse_file;
+use tiny_vg::parser::Parser;
 
 fn main() -> eyre::Result<()> {
     let path = std::env::args().nth(1).unwrap();
 
-    let mut file = File::open(path)?;
-    let mut input = Vec::new();
+    let parser = Parser::new(File::open(path)?);
 
-    file.read_to_end(&mut input)?;
-
-    let (_, file) = parse_file(&input).unwrap();
+    let file = parser.parse()?;
 
     println!("{:#?}", file);
 
