@@ -9,7 +9,9 @@ fn main() -> eyre::Result<()> {
 
     let file = parser.parse()?;
 
-    println!("{:#?}", file);
+    let mut stdout = std::io::stdout();
+
+    file.render_text(&mut stdout)?;
 
     Ok(())
 }

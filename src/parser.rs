@@ -765,29 +765,42 @@ struct ScaleProperties {
 mod tests {
     use super::Parser;
     use eyre::Result;
-    use std::fs::File;
+    use std::{fs::File, io::Read};
 
-    #[test]
-    fn everything() -> Result<()> {
-        let file = File::open("data/everything.tvg")?;
+    fn parse_test(file_basename: &str) -> Result<()> {
+        let file = File::open(format!("data/{}.tvg", file_basename))?;
+
         let p = Parser::new(file);
 
-        let result = p.parse()?;
+        let parse_result = p.parse()?;
 
-        insta::assert_debug_snapshot!(result);
+        let mut text_file = File::open(format!("data/{}.tvgt", file_basename))?;
+        let mut actual_text = String::new();
+
+        text_file.read_to_string(&mut actual_text)?;
+
+        let mut expected_text = Vec::new();
+        parse_result.render_text(&mut expected_text)?;
+
+        let expected_text = String::from_utf8(expected_text)?;
+
+        similar_asserts::assert_str_eq!(expected_text, actual_text);
 
         Ok(())
     }
 
-    #[test]
-    fn shield() -> Result<()> {
-        let file = File::open("data/shield.tvg")?;
-        let p = Parser::new(file);
+    macro_rules! parse_tests {
+        ($($name:ident),*) => {
+            $(
+                #[test]
+                fn $name() -> Result<()> {
+                    parse_test(stringify!($name))?;
 
-        let result = p.parse()?;
-
-        insta::assert_debug_snapshot!(result);
-
-        Ok(())
+                    Ok(())
+                }
+            )*
+        };
     }
+
+    parse_tests!(everything, shield, flowchart, app_icon);
 }
