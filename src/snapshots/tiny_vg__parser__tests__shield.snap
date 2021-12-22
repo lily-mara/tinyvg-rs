@@ -1,0 +1,289 @@
+---
+source: src/parser.rs
+expression: result
+
+---
+File {
+    header: Header {
+        version: 1,
+        scale: 2,
+        color_encoding: Rgba8888,
+        coordinate_range: Reduced,
+        width: 24,
+        height: 24,
+        color_count: 2,
+    },
+    color_table: [
+        Color {
+            red: 0.16078432,
+            green: 0.6784314,
+            blue: 1.0,
+            alpha: 1.0,
+        },
+        Color {
+            red: 1.0,
+            green: 0.94509804,
+            blue: 0.9098039,
+            alpha: 1.0,
+        },
+    ],
+    commands: [
+        FillPath {
+            fill_style: FlatColor {
+                color_index: 0,
+            },
+            path: [
+                Segment {
+                    start: Point {
+                        x: 12.0,
+                        y: 1.0,
+                    },
+                    commands: [
+                        SegmentCommand {
+                            kind: Line {
+                                end: Point {
+                                    x: 3.0,
+                                    y: 5.0,
+                                },
+                            },
+                            line_width: None,
+                        },
+                        SegmentCommand {
+                            kind: VerticalLine {
+                                y: 11.0,
+                            },
+                            line_width: None,
+                        },
+                        SegmentCommand {
+                            kind: CubicBezier {
+                                control_0: Point {
+                                    x: 3.0,
+                                    y: 16.5,
+                                },
+                                control_1: Point {
+                                    x: 6.75,
+                                    y: 21.75,
+                                },
+                                point_1: Point {
+                                    x: 12.0,
+                                    y: 23.0,
+                                },
+                            },
+                            line_width: None,
+                        },
+                        SegmentCommand {
+                            kind: CubicBezier {
+                                control_0: Point {
+                                    x: 17.25,
+                                    y: 21.75,
+                                },
+                                control_1: Point {
+                                    x: 21.0,
+                                    y: 16.5,
+                                },
+                                point_1: Point {
+                                    x: 21.0,
+                                    y: 11.0,
+                                },
+                            },
+                            line_width: None,
+                        },
+                        SegmentCommand {
+                            kind: VerticalLine {
+                                y: 5.0,
+                            },
+                            line_width: None,
+                        },
+                    ],
+                },
+                Segment {
+                    start: Point {
+                        x: 17.25,
+                        y: 17.0,
+                    },
+                    commands: [
+                        SegmentCommand {
+                            kind: CubicBezier {
+                                control_0: Point {
+                                    x: 16.0,
+                                    y: 18.75,
+                                },
+                                control_1: Point {
+                                    x: 14.0,
+                                    y: 20.25,
+                                },
+                                point_1: Point {
+                                    x: 12.0,
+                                    y: 21.0,
+                                },
+                            },
+                            line_width: None,
+                        },
+                        SegmentCommand {
+                            kind: CubicBezier {
+                                control_0: Point {
+                                    x: 10.0,
+                                    y: 20.25,
+                                },
+                                control_1: Point {
+                                    x: 8.0,
+                                    y: 18.75,
+                                },
+                                point_1: Point {
+                                    x: 6.75,
+                                    y: 17.0,
+                                },
+                            },
+                            line_width: None,
+                        },
+                        SegmentCommand {
+                            kind: CubicBezier {
+                                control_0: Point {
+                                    x: 6.5,
+                                    y: 16.5,
+                                },
+                                control_1: Point {
+                                    x: 6.25,
+                                    y: 16.0,
+                                },
+                                point_1: Point {
+                                    x: 6.0,
+                                    y: 15.5,
+                                },
+                            },
+                            line_width: None,
+                        },
+                        SegmentCommand {
+                            kind: CubicBezier {
+                                control_0: Point {
+                                    x: 6.0,
+                                    y: 13.75,
+                                },
+                                control_1: Point {
+                                    x: 8.75,
+                                    y: 12.5,
+                                },
+                                point_1: Point {
+                                    x: 12.0,
+                                    y: 12.5,
+                                },
+                            },
+                            line_width: None,
+                        },
+                        SegmentCommand {
+                            kind: CubicBezier {
+                                control_0: Point {
+                                    x: 15.25,
+                                    y: 12.5,
+                                },
+                                control_1: Point {
+                                    x: 18.0,
+                                    y: 13.75,
+                                },
+                                point_1: Point {
+                                    x: 18.0,
+                                    y: 15.5,
+                                },
+                            },
+                            line_width: None,
+                        },
+                        SegmentCommand {
+                            kind: CubicBezier {
+                                control_0: Point {
+                                    x: 17.75,
+                                    y: 16.0,
+                                },
+                                control_1: Point {
+                                    x: 17.5,
+                                    y: 16.5,
+                                },
+                                point_1: Point {
+                                    x: 17.25,
+                                    y: 17.0,
+                                },
+                            },
+                            line_width: None,
+                        },
+                    ],
+                },
+                Segment {
+                    start: Point {
+                        x: 12.0,
+                        y: 5.0,
+                    },
+                    commands: [
+                        SegmentCommand {
+                            kind: CubicBezier {
+                                control_0: Point {
+                                    x: 13.5,
+                                    y: 5.0,
+                                },
+                                control_1: Point {
+                                    x: 15.0,
+                                    y: 6.25,
+                                },
+                                point_1: Point {
+                                    x: 15.0,
+                                    y: 8.0,
+                                },
+                            },
+                            line_width: None,
+                        },
+                        SegmentCommand {
+                            kind: CubicBezier {
+                                control_0: Point {
+                                    x: 15.0,
+                                    y: 9.5,
+                                },
+                                control_1: Point {
+                                    x: 13.75,
+                                    y: 11.0,
+                                },
+                                point_1: Point {
+                                    x: 12.0,
+                                    y: 11.0,
+                                },
+                            },
+                            line_width: None,
+                        },
+                        SegmentCommand {
+                            kind: CubicBezier {
+                                control_0: Point {
+                                    x: 10.5,
+                                    y: 11.0,
+                                },
+                                control_1: Point {
+                                    x: 9.0,
+                                    y: 9.75,
+                                },
+                                point_1: Point {
+                                    x: 9.0,
+                                    y: 8.0,
+                                },
+                            },
+                            line_width: None,
+                        },
+                        SegmentCommand {
+                            kind: CubicBezier {
+                                control_0: Point {
+                                    x: 9.0,
+                                    y: 6.5,
+                                },
+                                control_1: Point {
+                                    x: 10.25,
+                                    y: 5.0,
+                                },
+                                point_1: Point {
+                                    x: 12.0,
+                                    y: 5.0,
+                                },
+                            },
+                            line_width: None,
+                        },
+                    ],
+                },
+            ],
+        },
+    ],
+    trailer: [],
+}

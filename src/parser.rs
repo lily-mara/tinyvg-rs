@@ -63,11 +63,13 @@ impl TryFrom<u8> for StyleVariant {
     }
 }
 
+#[derive(Debug)]
 struct SegmentCommandTag {
     instruction: SegmentCommandVariant,
     line_width: Option<f32>,
 }
 
+#[derive(Debug)]
 enum SegmentCommandVariant {
     Line,
     HorizontalLine,
@@ -442,15 +444,13 @@ where
         Ok(SegmentCommandKind::QuadraticBezier { control, point_1 })
     }
 
-    fn segment(&mut self) -> Result<Segment> {
-        let count = self.read_var_uint()?;
+    fn segment(&mut self, segment_size: u32) -> Result<Segment> {
         let start = self.point()?;
 
-        dbg!(count, &start);
-
         let mut commands = Vec::new();
-        for _ in 0..count {
+        for _ in 0..segment_size {
             let tag = self.segment_command_tag()?;
+
             let kind = match tag.instruction {
                 SegmentCommandVariant::Line => self.segment_command_line()?,
                 SegmentCommandVariant::HorizontalLine => self.segment_command_horizontal_line()?,
@@ -470,15 +470,13 @@ where
             });
         }
 
-        dbg!(&commands);
-
         Ok(Segment { start, commands })
     }
 
     fn segment_command_tag(&mut self) -> Result<SegmentCommandTag> {
         let raw = self.reader.read_u8()?;
 
-        let instruction = (raw & 0b1110_0000) >> 5;
+        let instruction = raw & 0b0000_0111;
 
         let has_line_width = (raw & 0b000_1000) > 0;
         let line_width = if has_line_width {
@@ -513,8 +511,6 @@ where
         let count = self.read_var_uint()? + 1;
         let style = self.style(variant)?;
 
-        dbg!(count);
-
         let mut items = Vec::new();
         for _ in 0..count {
             items.push(f(self)?);
@@ -523,12 +519,25 @@ where
         Ok((style, items))
     }
 
-    fn fill_path(&mut self, style_variant: StyleVariant) -> Result<Command> {
-        dbg!();
-        let (fill_style, path) = self.count_and_style_command(style_variant, Self::segment)?;
-        dbg!();
+    fn read_path(&mut self, count: u32) -> Result<Vec<Segment>> {
+        let mut segment_lengths = Vec::new();
+        for _ in 0..count {
+            segment_lengths.push(self.read_var_uint()? + 1);
+        }
 
-        dbg!(&fill_style, &path);
+        let mut items = Vec::new();
+        for i in 0..count {
+            items.push(self.segment(segment_lengths[i as usize])?);
+        }
+
+        Ok(items)
+    }
+
+    fn fill_path(&mut self, style_variant: StyleVariant) -> Result<Command> {
+        let count = self.read_var_uint()? + 1;
+        let fill_style = self.style(style_variant)?;
+
+        let path = self.read_path(count)?;
 
         Ok(Command::FillPath { fill_style, path })
     }
@@ -605,10 +614,7 @@ where
         let line_style = self.style(style_variant)?;
         let line_width = self.reader.read_f32::<LittleEndian>()?;
 
-        let mut path = Vec::new();
-        for _ in 0..count {
-            path.push(self.segment()?);
-        }
+        let path = self.read_path(count)?;
 
         Ok(Command::DrawLinePath {
             line_style,
@@ -666,20 +672,26 @@ where
     }
 
     fn outline_fill_path(&mut self, primary_style: StyleVariant) -> Result<Command> {
-        let outline_fill = self.outline_fill_cmd(primary_style, Self::segment)?;
+        let (segment_count, secondary_style) = self.u6_u2()?;
+        let secondary_style = StyleVariant::try_from(secondary_style)?;
+
+        let fill_style = self.style(primary_style)?;
+        let line_style = self.style(secondary_style)?;
+
+        let line_width = self.reader.read_f32::<LittleEndian>()?;
+
+        let path = self.read_path(segment_count as u32)?;
 
         Ok(Command::OutlineFillPath {
-            fill_style: outline_fill.fill_style,
-            line_style: outline_fill.line_style,
-            line_width: outline_fill.line_width,
-            path: outline_fill.items,
+            fill_style,
+            line_style,
+            line_width,
+            path,
         })
     }
 
     fn command(&mut self) -> Result<Option<Command>> {
         let (command_index, primary_style) = self.u6_u2()?;
-
-        dbg!(command_index);
 
         let primary_style = primary_style.try_into()?;
 
@@ -697,8 +709,6 @@ where
             10 => self.outline_fill_path(primary_style)?,
             x => bail!("unsupported command type: {}", x),
         };
-
-        dbg!(&command);
 
         Ok(Some(command))
     }
