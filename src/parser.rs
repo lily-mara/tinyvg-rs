@@ -524,7 +524,11 @@ where
     }
 
     fn fill_path(&mut self, style_variant: StyleVariant) -> Result<Command> {
+        dbg!();
         let (fill_style, path) = self.count_and_style_command(style_variant, Self::segment)?;
+        dbg!();
+
+        dbg!(&fill_style, &path);
 
         Ok(Command::FillPath { fill_style, path })
     }
@@ -754,8 +758,20 @@ mod tests {
     use std::fs::File;
 
     #[test]
-    fn test_parser() -> Result<()> {
+    fn everything() -> Result<()> {
         let file = File::open("data/everything.tvg")?;
+        let p = Parser::new(file);
+
+        let result = p.parse()?;
+
+        insta::assert_debug_snapshot!(result);
+
+        Ok(())
+    }
+
+    #[test]
+    fn shield() -> Result<()> {
+        let file = File::open("data/shield.tvg")?;
         let p = Parser::new(file);
 
         let result = p.parse()?;
