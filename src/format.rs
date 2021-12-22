@@ -15,53 +15,162 @@ pub enum ColorEncoding {
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct Point {
-    pub x: u32,
-    pub y: u32,
+    pub x: f32,
+    pub y: f32,
 }
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Style {
     FlatColor {
-        color_index: u32,
+        color_index: usize,
     },
     LinearGradient {
+        point_0: Point,
         point_1: Point,
-        point_2: Point,
-        color_index_1: u32,
-        color_index_2: u32,
+        color_index_0: usize,
+        color_index_1: usize,
     },
     RadialGradient {
+        point_0: Point,
         point_1: Point,
-        point_2: Point,
-        color_index_1: u32,
-        color_index_2: u32,
+        color_index_0: usize,
+        color_index_1: usize,
     },
 }
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Command {
-    FillPolygon,
-    FillRectangles,
-    FillPath,
-    DrawLines,
-    DrawLineLoop,
-    DrawLineStrip,
-    DrawLinePath,
-    OutlineFillPolygon,
-    OutlineFillRectangle,
-    OutlineFillPath,
+    FillPolygon {
+        fill_style: Style,
+        polygon: Vec<Point>,
+    },
+    FillRectangles {
+        fill_style: Style,
+        rectangles: Vec<Rectangle>,
+    },
+    FillPath {
+        fill_style: Style,
+        path: Vec<Segment>,
+    },
+    DrawLines {
+        line_style: Style,
+        line_width: f32,
+        lines: Vec<Line>,
+    },
+    DrawLineLoop {
+        line_style: Style,
+        line_width: f32,
+        points: Vec<Point>,
+    },
+    DrawLineStrip {
+        line_style: Style,
+        line_width: f32,
+        points: Vec<Point>,
+    },
+    DrawLinePath {
+        line_style: Style,
+        line_width: f32,
+        path: Vec<Segment>,
+    },
+    OutlineFillPolygon {
+        fill_style: Style,
+        line_style: Style,
+        line_width: f32,
+        points: Vec<Point>,
+    },
+    OutlineFillRectangle {
+        fill_style: Style,
+        line_style: Style,
+        line_width: f32,
+        rectangles: Vec<Rectangle>,
+    },
+    OutlineFillPath {
+        fill_style: Style,
+        line_style: Style,
+        line_width: f32,
+        path: Vec<Segment>,
+    },
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub struct Line {
+    pub start: Point,
+    pub end: Point,
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub struct Segment {
+    pub start: Point,
+    pub commands: Vec<SegmentCommand>,
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub struct SegmentCommand {
+    pub kind: SegmentCommandKind,
+    pub line_width: Option<f32>,
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub enum Sweep {
+    Left,
+    Right,
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub enum SegmentCommandKind {
+    Line {
+        end: Point,
+    },
+    HorizontalLine {
+        x: f32,
+    },
+    VerticalLine {
+        y: f32,
+    },
+    CubicBezier {
+        control_0: Point,
+        control_1: Point,
+        point_1: Point,
+    },
+    ArcCircle {
+        large: bool,
+        sweep: Sweep,
+        radius: f32,
+        target: Point,
+    },
+    ArcEllipse {
+        large: bool,
+        sweep: Sweep,
+        radius_x: f32,
+        radius_y: f32,
+        rotation: f32,
+        target: Point,
+    },
+    ClosePath,
+    QuadraticBezier {
+        control: Point,
+        point_1: Point,
+    },
 }
 
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub enum CoordinateRange {
-    // 8 bits
+    // 16 bits
     Default,
 
-    // 16 bits
+    // 8 bits
     Reduced,
 
     // 32 bits
     Enhanced,
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub struct Rectangle {
+    pub x: f32,
+    pub y: f32,
+    pub width: f32,
+    pub height: f32,
 }
 
 #[derive(Debug, PartialEq, Clone)]

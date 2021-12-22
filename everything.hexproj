@@ -1,0 +1,1 @@
+{"dataProcessor":"{\"links\":{},\"nodes\":{}}","filePath":"/Users/lily/projects/github.com/lily-mara/tiny-vg/data/everything.tvg","patches":[],"pattern":"bitfield scale_and_flags {\n\tscale: 4;\n\tcolor_encoding: 2;\n\tcoordinate_range: 2;\n};\n\nstruct header {\n\tu16 magic;\n\tu8 version;\n\tscale_and_flags scale_and_flags;\n};\n\nheader header @0;\n"}
