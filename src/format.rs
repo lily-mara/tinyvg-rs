@@ -36,18 +36,27 @@ pub enum Style {
 }
 
 #[derive(Debug, PartialEq, Clone)]
+pub struct OutlineStyle {
+    pub line_width: f64,
+    pub line_style: Style,
+}
+
+#[derive(Debug, PartialEq, Clone)]
 pub enum Command {
     FillPolygon {
         fill_style: Style,
         polygon: Vec<Point>,
+        outline: Option<OutlineStyle>,
     },
     FillRectangles {
         fill_style: Style,
         rectangles: Vec<Rect>,
+        outline: Option<OutlineStyle>,
     },
     FillPath {
         fill_style: Style,
         path: Vec<Segment>,
+        outline: Option<OutlineStyle>,
     },
     DrawLines {
         line_style: Style,
@@ -57,32 +66,10 @@ pub enum Command {
     DrawLineLoop {
         line_style: Style,
         line_width: f64,
-        points: Vec<Point>,
-    },
-    DrawLineStrip {
-        line_style: Style,
-        line_width: f64,
+        close_path: bool,
         points: Vec<Point>,
     },
     DrawLinePath {
-        line_style: Style,
-        line_width: f64,
-        path: Vec<Segment>,
-    },
-    OutlineFillPolygon {
-        fill_style: Style,
-        line_style: Style,
-        line_width: f64,
-        points: Vec<Point>,
-    },
-    OutlineFillRectangle {
-        fill_style: Style,
-        line_style: Style,
-        line_width: f64,
-        rectangles: Vec<Rect>,
-    },
-    OutlineFillPath {
-        fill_style: Style,
         line_style: Style,
         line_width: f64,
         path: Vec<Segment>,

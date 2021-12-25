@@ -6,8 +6,8 @@ use kurbo::{Rect, Size};
 use packed_struct::prelude::*;
 
 use crate::format::{
-    Color, ColorEncoding, Command, CoordinateRange, File, Header, Line, Point, Segment,
-    SegmentCommand, SegmentCommandKind, Style, Sweep,
+    Color, ColorEncoding, Command, CoordinateRange, File, Header, Line, OutlineStyle, Point,
+    Segment, SegmentCommand, SegmentCommandKind, Style, Sweep,
 };
 
 struct ByteCountReader<R> {
@@ -277,6 +277,7 @@ where
         Ok(Command::FillPolygon {
             fill_style,
             polygon,
+            outline: None,
         })
     }
 
@@ -308,6 +309,7 @@ where
         Ok(Command::FillRectangles {
             fill_style,
             rectangles,
+            outline: None,
         })
     }
 
@@ -532,7 +534,11 @@ where
 
         let path = self.read_path(count)?;
 
-        Ok(Command::FillPath { fill_style, path })
+        Ok(Command::FillPath {
+            fill_style,
+            path,
+            outline: None,
+        })
     }
 
     fn u6_u2(&mut self) -> Result<(u8, u8)> {
@@ -581,6 +587,7 @@ where
         Ok(Command::DrawLineLoop {
             line_style,
             line_width,
+            close_path: true,
             points,
         })
     }
@@ -595,10 +602,11 @@ where
             points.push(self.point()?);
         }
 
-        Ok(Command::DrawLineStrip {
+        Ok(Command::DrawLineLoop {
             line_style,
             line_width,
             points,
+            close_path: false,
         })
     }
 
@@ -636,8 +644,10 @@ where
 
         Ok(OutlineFill {
             fill_style,
-            line_style,
-            line_width,
+            outline: OutlineStyle {
+                line_style,
+                line_width,
+            },
             items,
         })
     }
@@ -645,21 +655,19 @@ where
     fn outline_fill_polygon(&mut self, primary_style: StyleVariant) -> Result<Command> {
         let outline_fill = self.outline_fill_cmd(primary_style, Self::point)?;
 
-        Ok(Command::OutlineFillPolygon {
+        Ok(Command::FillPolygon {
             fill_style: outline_fill.fill_style,
-            line_style: outline_fill.line_style,
-            line_width: outline_fill.line_width,
-            points: outline_fill.items,
+            outline: Some(outline_fill.outline),
+            polygon: outline_fill.items,
         })
     }
 
     fn outline_fill_rectangles(&mut self, primary_style: StyleVariant) -> Result<Command> {
         let outline_fill = self.outline_fill_cmd(primary_style, Self::rectangle)?;
 
-        Ok(Command::OutlineFillRectangle {
+        Ok(Command::FillRectangles {
             fill_style: outline_fill.fill_style,
-            line_style: outline_fill.line_style,
-            line_width: outline_fill.line_width,
+            outline: Some(outline_fill.outline),
             rectangles: outline_fill.items,
         })
     }
@@ -675,10 +683,12 @@ where
 
         let path = self.read_path(segment_count as u32)?;
 
-        Ok(Command::OutlineFillPath {
+        Ok(Command::FillPath {
+            outline: Some(OutlineStyle {
+                line_style,
+                line_width,
+            }),
             fill_style,
-            line_style,
-            line_width,
             path,
         })
     }
@@ -742,8 +752,7 @@ where
 
 struct OutlineFill<T> {
     fill_style: Style,
-    line_style: Style,
-    line_width: f64,
+    outline: OutlineStyle,
     items: Vec<T>,
 }
 
