@@ -1,6 +1,6 @@
 use cairo::{Format, ImageSurface};
 use eyre::{Context, Result};
-use kurbo::{BezPath, Vec2};
+use kurbo::{Arc, BezPath, SvgArc, Vec2};
 use piet::kurbo::{Point, Size};
 use piet::{Color, FixedLinearGradient, FixedRadialGradient, GradientStop, RenderContext};
 use piet_cairo::CairoRenderContext;
@@ -114,7 +114,13 @@ impl crate::format::File {
     }
 }
 
-fn draw_path<R>(rc: &mut R, fill: R::Brush, line: R::Brush, line_width: f64, path: &[Segment])
+fn draw_path<R>(
+    rc: &mut R,
+    fill: R::Brush,
+    line: R::Brush,
+    line_width: f64,
+    path: &[Segment],
+) -> Result<()>
 where
     R: RenderContext,
 {
@@ -157,11 +163,34 @@ where
                     bezier.line_to(end);
                     pen = end;
                 }
-                SegmentCommandKind::ArcCircle { .. } => {
-                    // TODO: circle
-                }
-                SegmentCommandKind::ArcEllipse { .. } => {
-                    // TODO: ellipse
+                SegmentCommandKind::ArcEllipse {
+                    large,
+                    sweep,
+                    radius_x,
+                    radius_y,
+                    rotation,
+                    target,
+                } => {
+                    let svg_arc = SvgArc {
+                        from: pen,
+                        to: *target,
+                        radii: Vec2 {
+                            x: *radius_x,
+                            y: *radius_y,
+                        },
+                        x_rotation: *rotation,
+                        large_arc: *large,
+                        sweep: *sweep,
+                    };
+                    let arc = Arc::from_svg_arc(&svg_arc).ok_or_else(|| {
+                        eyre::eyre!("failed to create arc from svg arc {:?}", svg_arc)
+                    })?;
+
+                    for segment in arc.append_iter(0.2) {
+                        bezier.push(segment);
+                    }
+
+                    pen = *target;
                 }
                 SegmentCommandKind::ClosePath => {
                     bezier.line_to(*start);
@@ -177,6 +206,8 @@ where
 
     rc.fill(&bezier, &fill);
     rc.stroke(&bezier, &line, line_width);
+
+    Ok(())
 }
 
 fn nil_brush<R>(rc: &mut R) -> R::Brush
@@ -198,7 +229,7 @@ fn draw(f: &crate::format::File, rc: &mut impl RenderContext) -> Result<()> {
                 let fill = f.brush(rc, fill_style)?;
                 let (line_width, line_brush) = f.outline_style(rc, outline)?;
 
-                draw_path(rc, fill, line_brush, line_width, path);
+                draw_path(rc, fill, line_brush, line_width, path)?;
             }
             Command::FillRectangles {
                 fill_style,
@@ -272,7 +303,7 @@ fn draw(f: &crate::format::File, rc: &mut impl RenderContext) -> Result<()> {
                 let line = f.brush(rc, line_style)?;
                 let fill = nil_brush(rc);
 
-                draw_path(rc, fill, line, *line_width, path);
+                draw_path(rc, fill, line, *line_width, path)?;
             }
         }
     }

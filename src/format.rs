@@ -89,12 +89,6 @@ pub struct SegmentCommand {
 }
 
 #[derive(Debug, PartialEq, Clone)]
-pub enum Sweep {
-    Left,
-    Right,
-}
-
-#[derive(Debug, PartialEq, Clone)]
 pub enum SegmentCommandKind {
     Line {
         end: Point,
@@ -110,15 +104,9 @@ pub enum SegmentCommandKind {
         control_1: Point,
         point_1: Point,
     },
-    ArcCircle {
-        large: bool,
-        sweep: Sweep,
-        radius: f64,
-        target: Point,
-    },
     ArcEllipse {
         large: bool,
-        sweep: Sweep,
+        sweep: bool,
         radius_x: f64,
         radius_y: f64,
         rotation: f64,

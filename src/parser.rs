@@ -7,7 +7,7 @@ use packed_struct::prelude::*;
 
 use crate::format::{
     Color, ColorEncoding, Command, CoordinateRange, File, Header, Line, OutlineStyle, Point,
-    Segment, SegmentCommand, SegmentCommandKind, Style, Sweep,
+    Segment, SegmentCommand, SegmentCommandKind, Style,
 };
 
 struct ByteCountReader<R> {
@@ -395,10 +395,12 @@ where
         let radius = self.read_unit()?;
         let target = self.point()?;
 
-        Ok(SegmentCommandKind::ArcCircle {
+        Ok(SegmentCommandKind::ArcEllipse {
             large,
             sweep,
-            radius,
+            radius_x: radius,
+            radius_y: radius,
+            rotation: 0.0,
             target,
         })
     }
@@ -420,14 +422,10 @@ where
         })
     }
 
-    fn arc_header(&mut self) -> Result<(bool, Sweep)> {
+    fn arc_header(&mut self) -> Result<(bool, bool)> {
         let raw = self.reader.read_u8()?;
-        let is_large = (raw & 0b1000_0000) > 0;
-        let sweep = if (raw & 0b0100_0000) > 0 {
-            Sweep::Left
-        } else {
-            Sweep::Right
-        };
+        let is_large = (raw & 0b0000_0001) > 0;
+        let sweep = (raw & 0b0000_0010) == 0;
 
         Ok((is_large, sweep))
     }
