@@ -1,3 +1,6 @@
+pub use kurbo::Point;
+pub use piet::Color;
+
 #[derive(Debug, PartialEq, Clone)]
 pub struct File {
     pub header: Header,
@@ -11,12 +14,6 @@ pub enum ColorEncoding {
     Rgba8888,
     Rgb565,
     RgbaF32,
-}
-
-#[derive(Debug, PartialEq, Clone)]
-pub struct Point {
-    pub x: f32,
-    pub y: f32,
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -54,40 +51,40 @@ pub enum Command {
     },
     DrawLines {
         line_style: Style,
-        line_width: f32,
+        line_width: f64,
         lines: Vec<Line>,
     },
     DrawLineLoop {
         line_style: Style,
-        line_width: f32,
+        line_width: f64,
         points: Vec<Point>,
     },
     DrawLineStrip {
         line_style: Style,
-        line_width: f32,
+        line_width: f64,
         points: Vec<Point>,
     },
     DrawLinePath {
         line_style: Style,
-        line_width: f32,
+        line_width: f64,
         path: Vec<Segment>,
     },
     OutlineFillPolygon {
         fill_style: Style,
         line_style: Style,
-        line_width: f32,
+        line_width: f64,
         points: Vec<Point>,
     },
     OutlineFillRectangle {
         fill_style: Style,
         line_style: Style,
-        line_width: f32,
+        line_width: f64,
         rectangles: Vec<Rectangle>,
     },
     OutlineFillPath {
         fill_style: Style,
         line_style: Style,
-        line_width: f32,
+        line_width: f64,
         path: Vec<Segment>,
     },
 }
@@ -107,7 +104,7 @@ pub struct Segment {
 #[derive(Debug, PartialEq, Clone)]
 pub struct SegmentCommand {
     pub kind: SegmentCommandKind,
-    pub line_width: Option<f32>,
+    pub line_width: Option<f64>,
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -122,10 +119,10 @@ pub enum SegmentCommandKind {
         end: Point,
     },
     HorizontalLine {
-        x: f32,
+        x: f64,
     },
     VerticalLine {
-        y: f32,
+        y: f64,
     },
     CubicBezier {
         control_0: Point,
@@ -135,15 +132,15 @@ pub enum SegmentCommandKind {
     ArcCircle {
         large: bool,
         sweep: Sweep,
-        radius: f32,
+        radius: f64,
         target: Point,
     },
     ArcEllipse {
         large: bool,
         sweep: Sweep,
-        radius_x: f32,
-        radius_y: f32,
-        rotation: f32,
+        radius_x: f64,
+        radius_y: f64,
+        rotation: f64,
         target: Point,
     },
     ClosePath,
@@ -167,18 +164,10 @@ pub enum CoordinateRange {
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct Rectangle {
-    pub x: f32,
-    pub y: f32,
-    pub width: f32,
-    pub height: f32,
-}
-
-#[derive(Debug, PartialEq, Clone)]
-pub struct Color {
-    pub red: f32,
-    pub green: f32,
-    pub blue: f32,
-    pub alpha: f32,
+    pub x: f64,
+    pub y: f64,
+    pub width: f64,
+    pub height: f64,
 }
 
 #[derive(Debug, PartialEq, Clone)]

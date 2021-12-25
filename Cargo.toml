@@ -5,8 +5,13 @@ edition = "2021"
 
 [dependencies]
 byteorder = "1.4.3"
+cairo-rs = { version = "0.14.0", features = ["png"] }
 eyre = "0.6.5"
+kurbo = "0.8.3"
 packed_struct = "0.10.0"
+piet = "0.5.0"
+piet-cairo = "0.5.0"
+png = "0.17.2"
 
 [dev-dependencies]
 similar-asserts = "1.1.0"

@@ -1,3 +1,6 @@
 mod format;
 pub mod parser;
-mod text_format;
+mod render;
+// mod text_format;
+
+pub use render::render;
