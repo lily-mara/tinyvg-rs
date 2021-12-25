@@ -5,6 +5,12 @@ It provides an executable that renders PNG images from TinyVG input files, and a
 library that can render PNG images or any format supported by
 `piet::RenderContext`.
 
+# Dependencies
+
+All dependencies but one are managed by cargo. This program/library does depend
+on cairo for rendering PNGs. You should be able to install cairo using your OS
+package manager.
+
 # Executable
 
 ## Installation
@@ -54,4 +60,29 @@ fn main() -> eyre::Result<()> {
 
     Ok(())
 }
+```
+
+# Development
+
+## Testing
+
+There are some doctests which validate that certain files can be parsed and
+rendered without errors, but there currently isn't much in the way of automated
+testing. I wasn't sure how to effectively write equality tests without writing a
+massive amount of code. There is an example program which will crawl the `data`
+directory and render all `.tvg` files into `.png` files with the same names.
+This can be used to validate rendering behavior for example images.
+
+```
+$ cargo run --example render-all
+path                 render time
+data/app_icon.tvg    78.94075ms
+data/chart.tvg       14.194083ms
+data/comic.tvg       23.534791ms
+data/everything.tvg  21.251875ms
+data/flowchart.tvg   5.075ms
+data/shield.tvg      597.916µs
+data/tiger.tvg       35.942166ms
+
+$ open data/tiger.png
 ```
