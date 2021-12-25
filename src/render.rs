@@ -2,7 +2,7 @@ use cairo::{Format, ImageSurface};
 use eyre::{Context, Result};
 use kurbo::{BezPath, Vec2};
 use piet::kurbo::{Point, Size};
-use piet::{FixedLinearGradient, FixedRadialGradient, GradientStop, RenderContext};
+use piet::{Color, FixedLinearGradient, FixedRadialGradient, GradientStop, RenderContext};
 use piet_cairo::CairoRenderContext;
 
 use crate::format::{Command, Segment, SegmentCommand, SegmentCommandKind, Style};
@@ -92,71 +92,161 @@ impl crate::format::File {
     }
 }
 
+fn draw_path<R>(rc: &mut R, fill: R::Brush, line: R::Brush, line_width: f64, path: &[Segment])
+where
+    R: RenderContext,
+{
+    let mut bezier = BezPath::new();
+
+    for Segment { start, commands } in path {
+        let mut pen = *start;
+
+        bezier.move_to(pen);
+
+        for SegmentCommand {
+            kind,
+            line_width: _,
+        } in commands
+        {
+            // TODO: line width
+
+            match kind {
+                SegmentCommandKind::Line { end } => {
+                    pen = *end;
+                    bezier.line_to(*end);
+                }
+                SegmentCommandKind::VerticalLine { y } => {
+                    let end = Point { x: pen.x, y: *y };
+
+                    bezier.line_to(end);
+                    pen = end;
+                }
+                SegmentCommandKind::CubicBezier {
+                    control_0,
+                    control_1,
+                    point_1,
+                } => {
+                    bezier.curve_to(*control_0, *control_1, *point_1);
+                    pen = *point_1;
+                }
+                SegmentCommandKind::HorizontalLine { x } => {
+                    let end = Point { x: *x, y: pen.y };
+
+                    bezier.line_to(end);
+                    pen = end;
+                }
+                SegmentCommandKind::ArcCircle { .. } => {
+                    // TODO: circle
+                }
+                SegmentCommandKind::ArcEllipse { .. } => {
+                    // TODO: ellipse
+                }
+                SegmentCommandKind::ClosePath => {
+                    bezier.line_to(*start);
+                    pen = *start;
+                }
+                SegmentCommandKind::QuadraticBezier { control, point_1 } => {
+                    bezier.quad_to(*control, *point_1);
+                    pen = *point_1;
+                }
+            }
+        }
+    }
+
+    rc.fill(&bezier, &fill);
+    rc.stroke(&bezier, &line, line_width);
+}
+
 fn draw(f: &crate::format::File, rc: &mut impl RenderContext) -> Result<()> {
     // rc.clear(None, Color::WHITE);
     for cmd in &f.commands {
         match cmd {
             Command::FillPath { fill_style, path } => {
+                let fill = f.brush(rc, fill_style)?;
+                let line = rc.solid_brush(Color::rgba(0.0, 0.0, 0.0, 0.0));
+
+                draw_path(rc, fill, line, 0.0, path);
+            }
+            Command::FillRectangles {
+                fill_style,
+                rectangles,
+            } => {
                 let brush = f.brush(rc, fill_style)?;
 
-                let mut bezier = BezPath::new();
+                for rect in rectangles {
+                    rc.fill(rect, &brush);
+                }
+            }
+            Command::OutlineFillRectangle {
+                fill_style,
+                line_style,
+                line_width,
+                rectangles,
+            } => {
+                let fill = f.brush(rc, fill_style)?;
+                let line = f.brush(rc, line_style)?;
 
-                for Segment { start, commands } in path {
-                    let mut pen = *start;
+                for rect in rectangles {
+                    rc.stroke(rect, &line, *line_width);
 
-                    bezier.move_to(pen);
+                    rc.fill(rect, &fill);
+                }
+            }
+            Command::FillPolygon {
+                fill_style,
+                polygon,
+            } => {
+                let brush = f.brush(rc, fill_style)?;
 
-                    for SegmentCommand {
-                        kind,
-                        line_width: _,
-                    } in commands
-                    {
-                        // TODO: line width
+                let mut bez = BezPath::new();
+                bez.move_to(polygon[0]);
 
-                        match kind {
-                            SegmentCommandKind::Line { end } => {
-                                pen = *end;
-                                bezier.line_to(*end);
-                            }
-                            SegmentCommandKind::VerticalLine { y } => {
-                                let end = Point { x: pen.x, y: *y };
-
-                                bezier.line_to(end);
-                                pen = end;
-                            }
-                            SegmentCommandKind::CubicBezier {
-                                control_0,
-                                control_1,
-                                point_1,
-                            } => {
-                                bezier.curve_to(*control_0, *control_1, *point_1);
-                                pen = *point_1;
-                            }
-                            SegmentCommandKind::HorizontalLine { x } => {
-                                let end = Point { x: *x, y: pen.y };
-
-                                bezier.line_to(end);
-                                pen = end;
-                            }
-                            SegmentCommandKind::ArcCircle { .. } => {
-                                // TODO: circle
-                            }
-                            SegmentCommandKind::ArcEllipse { .. } => {
-                                // TODO: ellipse
-                            }
-                            SegmentCommandKind::ClosePath => {
-                                bezier.line_to(*start);
-                                pen = *start;
-                            }
-                            SegmentCommandKind::QuadraticBezier { control, point_1 } => {
-                                bezier.quad_to(*control, *point_1);
-                                pen = *point_1;
-                            }
-                        }
-                    }
+                for point in polygon {
+                    bez.line_to(*point);
                 }
 
-                rc.fill(bezier, &brush);
+                rc.fill(bez, &brush);
+            }
+            Command::DrawLines {
+                line_style,
+                line_width,
+                lines,
+            } => {
+                let brush = f.brush(rc, line_style)?;
+
+                for line in lines {
+                    rc.stroke(line, &brush, *line_width);
+                }
+            }
+            Command::OutlineFillPolygon {
+                fill_style,
+                line_style,
+                line_width,
+                points,
+            } => {
+                let fill = f.brush(rc, &fill_style)?;
+                let line = f.brush(rc, &line_style)?;
+
+                let mut bez = BezPath::new();
+                bez.move_to(points[0]);
+
+                for point in points {
+                    bez.line_to(*point);
+                }
+
+                rc.fill(&bez, &fill);
+                rc.stroke(&bez, &line, *line_width);
+            }
+            Command::OutlineFillPath {
+                fill_style,
+                line_style,
+                line_width,
+                path,
+            } => {
+                let fill = f.brush(rc, fill_style)?;
+                let line = f.brush(rc, line_style)?;
+
+                draw_path(rc, fill, line, *line_width, path);
             }
             _ => {}
         }

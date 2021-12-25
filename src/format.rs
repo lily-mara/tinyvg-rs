@@ -1,4 +1,4 @@
-pub use kurbo::Point;
+pub use kurbo::{Line, Point, Rect};
 pub use piet::Color;
 
 #[derive(Debug, PartialEq, Clone)]
@@ -43,7 +43,7 @@ pub enum Command {
     },
     FillRectangles {
         fill_style: Style,
-        rectangles: Vec<Rectangle>,
+        rectangles: Vec<Rect>,
     },
     FillPath {
         fill_style: Style,
@@ -79,7 +79,7 @@ pub enum Command {
         fill_style: Style,
         line_style: Style,
         line_width: f64,
-        rectangles: Vec<Rectangle>,
+        rectangles: Vec<Rect>,
     },
     OutlineFillPath {
         fill_style: Style,
@@ -87,12 +87,6 @@ pub enum Command {
         line_width: f64,
         path: Vec<Segment>,
     },
-}
-
-#[derive(Debug, PartialEq, Clone)]
-pub struct Line {
-    pub start: Point,
-    pub end: Point,
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -160,14 +154,6 @@ pub enum CoordinateRange {
 
     // 32 bits
     Enhanced,
-}
-
-#[derive(Debug, PartialEq, Clone)]
-pub struct Rectangle {
-    pub x: f64,
-    pub y: f64,
-    pub width: f64,
-    pub height: f64,
 }
 
 #[derive(Debug, PartialEq, Clone)]

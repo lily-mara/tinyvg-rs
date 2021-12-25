@@ -2,10 +2,11 @@ use std::io::Read;
 
 use byteorder::{LittleEndian, ReadBytesExt};
 use eyre::{bail, ensure, eyre, Context, Result};
+use kurbo::{Rect, Size};
 use packed_struct::prelude::*;
 
 use crate::format::{
-    Color, ColorEncoding, Command, CoordinateRange, File, Header, Line, Point, Rectangle, Segment,
+    Color, ColorEncoding, Command, CoordinateRange, File, Header, Line, Point, Segment,
     SegmentCommand, SegmentCommandKind, Style, Sweep,
 };
 
@@ -288,18 +289,16 @@ where
         Ok(result)
     }
 
-    fn rectangle(&mut self) -> Result<Rectangle> {
+    fn rectangle(&mut self) -> Result<Rect> {
         let x = self.read_unit()?;
         let y = self.read_unit()?;
         let width = self.read_unit()?;
         let height = self.read_unit()?;
 
-        Ok(Rectangle {
-            x,
-            y,
-            width,
-            height,
-        })
+        Ok(Rect::from_origin_size(
+            Point { x, y },
+            Size { width, height },
+        ))
     }
 
     fn fill_rectangles(&mut self, style_variant: StyleVariant) -> Result<Command> {
@@ -546,10 +545,10 @@ where
     }
 
     fn line(&mut self) -> Result<Line> {
-        let start = self.point()?;
-        let end = self.point()?;
+        let p0 = self.point()?;
+        let p1 = self.point()?;
 
-        Ok(Line { start, end })
+        Ok(Line { p0, p1 })
     }
 
     fn draw_lines(&mut self, style_variant: StyleVariant) -> Result<Command> {
