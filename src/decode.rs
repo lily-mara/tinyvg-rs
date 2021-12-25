@@ -128,6 +128,12 @@ where
     fn version(&mut self) -> Result<u8> {
         let version = self.reader.read_u8()?;
 
+        ensure!(
+            version == 1,
+            "Tried to parse TinyVG file with version {} - only version 1 files are supported",
+            version,
+        );
+
         Ok(version)
     }
 
