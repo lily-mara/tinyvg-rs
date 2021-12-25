@@ -7,38 +7,40 @@ use piet_cairo::CairoRenderContext;
 
 use crate::format::{Command, OutlineStyle, Segment, SegmentCommand, SegmentCommandKind, Style};
 
-pub fn render(f: &crate::format::File, writer: &mut impl std::io::Write) -> Result<()> {
-    let size = Size {
-        width: f.header.width as f64,
-        height: f.header.height as f64,
-    };
-
-    let surface = ImageSurface::create(Format::ARgb32, size.width as i32, size.height as i32)
-        .wrap_err("failed to create cairo surface")?;
-    let cr = cairo::Context::new(&surface).unwrap();
-
-    let render_result = {
-        let mut piet_context = CairoRenderContext::new(&cr);
-
-        let result = draw(f, &mut piet_context).wrap_err("failed to draw tinyvg file");
-
-        piet_context
-            .finish()
-            .map_err(|e| eyre::eyre!("{}", e))
-            .wrap_err("failed to finalize piet context")?;
-
-        result
-    };
-
-    surface.flush();
-    surface.write_to_png(writer)?;
-
-    render_result?;
-
-    Ok(())
-}
-
 impl crate::format::File {
+    pub fn render_png(&self, writer: &mut impl std::io::Write) -> Result<()> {
+        let size = Size {
+            width: self.header.width as f64,
+            height: self.header.height as f64,
+        };
+
+        let surface = ImageSurface::create(Format::ARgb32, size.width as i32, size.height as i32)
+            .wrap_err("failed to create cairo surface")?;
+        let cr = cairo::Context::new(&surface).unwrap();
+
+        let render_result = {
+            let mut piet_context = CairoRenderContext::new(&cr);
+
+            let result = self
+                .draw(&mut piet_context)
+                .wrap_err("failed to draw tinyvg file");
+
+            piet_context
+                .finish()
+                .map_err(|e| eyre::eyre!("{}", e))
+                .wrap_err("failed to finalize piet context")?;
+
+            result
+        };
+
+        surface.flush();
+        surface.write_to_png(writer)?;
+
+        render_result?;
+
+        Ok(())
+    }
+
     fn outline_style<R>(&self, rc: &mut R, o: &Option<OutlineStyle>) -> Result<(f64, R::Brush)>
     where
         R: RenderContext,
@@ -111,6 +113,100 @@ impl crate::format::File {
         };
 
         Ok(brush)
+    }
+
+    fn draw(&self, rc: &mut impl RenderContext) -> Result<()> {
+        // rc.clear(None, Color::WHITE);
+        for cmd in &self.commands {
+            match cmd {
+                Command::FillPath {
+                    fill_style,
+                    path,
+                    outline,
+                } => {
+                    let fill = self.brush(rc, fill_style)?;
+                    let (line_width, line_brush) = self.outline_style(rc, outline)?;
+
+                    draw_path(rc, fill, line_brush, line_width, path)?;
+                }
+                Command::FillRectangles {
+                    fill_style,
+                    rectangles,
+                    outline,
+                } => {
+                    let brush = self.brush(rc, fill_style)?;
+                    let (line_width, line_brush) = self.outline_style(rc, outline)?;
+
+                    for rect in rectangles {
+                        rc.fill(rect, &brush);
+                        rc.stroke(rect, &line_brush, line_width);
+                    }
+                }
+                Command::FillPolygon {
+                    fill_style,
+                    polygon,
+                    outline,
+                } => {
+                    let brush = self.brush(rc, fill_style)?;
+                    let (line_width, line_brush) = self.outline_style(rc, outline)?;
+
+                    let mut bez = BezPath::new();
+                    bez.move_to(polygon[0]);
+
+                    for point in polygon {
+                        bez.line_to(*point);
+                    }
+
+                    rc.fill(&bez, &brush);
+                    rc.stroke(&bez, &line_brush, line_width);
+                }
+                Command::DrawLines {
+                    line_style,
+                    line_width,
+                    lines,
+                } => {
+                    let brush = self.brush(rc, line_style)?;
+
+                    for line in lines {
+                        rc.stroke(line, &brush, *line_width);
+                    }
+                }
+                Command::DrawLineLoop {
+                    line_style,
+                    line_width,
+                    close_path,
+                    points,
+                } => {
+                    let line = self.brush(rc, line_style)?;
+
+                    let mut bez = BezPath::new();
+                    let start = points[0];
+                    bez.move_to(start);
+
+                    for p in points {
+                        bez.line_to(*p);
+                    }
+
+                    if *close_path {
+                        bez.line_to(start);
+                    }
+
+                    rc.stroke(bez, &line, *line_width);
+                }
+                Command::DrawLinePath {
+                    line_style,
+                    line_width,
+                    path,
+                } => {
+                    let line = self.brush(rc, line_style)?;
+                    let fill = nil_brush(rc);
+
+                    draw_path(rc, fill, line, *line_width, path)?;
+                }
+            }
+        }
+
+        Ok(())
     }
 }
 
@@ -215,98 +311,4 @@ where
     R: RenderContext,
 {
     rc.solid_brush(Color::rgba(0.0, 0.0, 0.0, 0.0))
-}
-
-fn draw(f: &crate::format::File, rc: &mut impl RenderContext) -> Result<()> {
-    // rc.clear(None, Color::WHITE);
-    for cmd in &f.commands {
-        match cmd {
-            Command::FillPath {
-                fill_style,
-                path,
-                outline,
-            } => {
-                let fill = f.brush(rc, fill_style)?;
-                let (line_width, line_brush) = f.outline_style(rc, outline)?;
-
-                draw_path(rc, fill, line_brush, line_width, path)?;
-            }
-            Command::FillRectangles {
-                fill_style,
-                rectangles,
-                outline,
-            } => {
-                let brush = f.brush(rc, fill_style)?;
-                let (line_width, line_brush) = f.outline_style(rc, outline)?;
-
-                for rect in rectangles {
-                    rc.fill(rect, &brush);
-                    rc.stroke(rect, &line_brush, line_width);
-                }
-            }
-            Command::FillPolygon {
-                fill_style,
-                polygon,
-                outline,
-            } => {
-                let brush = f.brush(rc, fill_style)?;
-                let (line_width, line_brush) = f.outline_style(rc, outline)?;
-
-                let mut bez = BezPath::new();
-                bez.move_to(polygon[0]);
-
-                for point in polygon {
-                    bez.line_to(*point);
-                }
-
-                rc.fill(&bez, &brush);
-                rc.stroke(&bez, &line_brush, line_width);
-            }
-            Command::DrawLines {
-                line_style,
-                line_width,
-                lines,
-            } => {
-                let brush = f.brush(rc, line_style)?;
-
-                for line in lines {
-                    rc.stroke(line, &brush, *line_width);
-                }
-            }
-            Command::DrawLineLoop {
-                line_style,
-                line_width,
-                close_path,
-                points,
-            } => {
-                let line = f.brush(rc, line_style)?;
-
-                let mut bez = BezPath::new();
-                let start = points[0];
-                bez.move_to(start);
-
-                for p in points {
-                    bez.line_to(*p);
-                }
-
-                if *close_path {
-                    bez.line_to(start);
-                }
-
-                rc.stroke(bez, &line, *line_width);
-            }
-            Command::DrawLinePath {
-                line_style,
-                line_width,
-                path,
-            } => {
-                let line = f.brush(rc, line_style)?;
-                let fill = nil_brush(rc);
-
-                draw_path(rc, fill, line, *line_width, path)?;
-            }
-        }
-    }
-
-    Ok(())
 }
