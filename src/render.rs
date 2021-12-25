@@ -214,7 +214,7 @@ fn draw_path<R>(
     rc: &mut R,
     fill: R::Brush,
     line: R::Brush,
-    line_width: f64,
+    mut line_width: f64,
     path: &[Segment],
 ) -> Result<()>
 where
@@ -229,10 +229,12 @@ where
 
         for SegmentCommand {
             kind,
-            line_width: _,
+            line_width: next_line_width,
         } in commands
         {
-            // TODO: line width
+            if let Some(lw) = next_line_width {
+                line_width = *lw;
+            }
 
             match kind {
                 SegmentCommandKind::Line { end } => {
