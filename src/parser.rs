@@ -560,7 +560,7 @@ where
     fn draw_lines(&mut self, style_variant: StyleVariant) -> Result<Command> {
         let count = self.read_var_uint()? + 1;
         let line_style = self.style(style_variant)?;
-        let line_width = self.reader.read_f32::<LittleEndian>()? as f64;
+        let line_width = self.read_unit()?;
 
         let mut lines = Vec::new();
         for _ in 0..count {
@@ -577,7 +577,7 @@ where
     fn draw_line_loop(&mut self, style_variant: StyleVariant) -> Result<Command> {
         let count = self.read_var_uint()? + 1;
         let line_style = self.style(style_variant)?;
-        let line_width = self.reader.read_f32::<LittleEndian>()? as f64;
+        let line_width = self.read_unit()?;
 
         let mut points = Vec::new();
         for _ in 0..count {
@@ -595,7 +595,7 @@ where
     fn draw_line_strip(&mut self, style_variant: StyleVariant) -> Result<Command> {
         let count = self.read_var_uint()? + 1;
         let line_style = self.style(style_variant)?;
-        let line_width = self.reader.read_f32::<LittleEndian>()? as f64;
+        let line_width = self.read_unit()?;
 
         let mut points = Vec::new();
         for _ in 0..count {
@@ -613,7 +613,7 @@ where
     fn draw_line_path(&mut self, style_variant: StyleVariant) -> Result<Command> {
         let count = self.read_var_uint()? + 1;
         let line_style = self.style(style_variant)?;
-        let line_width = self.reader.read_f32::<LittleEndian>()? as f64;
+        let line_width = self.read_unit()?;
 
         let path = self.read_path(count)?;
 
@@ -635,7 +635,7 @@ where
         let fill_style = self.style(primary_style)?;
         let line_style = self.style(secondary_style)?;
 
-        let line_width = self.reader.read_f32::<LittleEndian>()? as f64;
+        let line_width = self.read_unit()?;
 
         let mut items = Vec::new();
         for _ in 0..(segment_count + 1) {
@@ -679,7 +679,7 @@ where
         let fill_style = self.style(primary_style)?;
         let line_style = self.style(secondary_style)?;
 
-        let line_width = self.reader.read_f32::<LittleEndian>()? as f64;
+        let line_width = self.read_unit()?;
 
         let path = self.read_path(segment_count as u32)?;
 
@@ -716,37 +716,49 @@ where
         Ok(Some(command))
     }
 
-    pub fn parse(mut self) -> Result<File> {
-        self.parse_inner().wrap_err_with(|| {
-            eyre!(
-                "parsing failed after reading {} bytes",
-                self.reader.bytes_read
-            )
-        })
-    }
-
-    fn parse_inner(&mut self) -> Result<File> {
+    pub fn parse_header(&mut self) -> Result<File> {
         let header = self.header().wrap_err("error parsing header")?;
         let color_table = self
             .parse_color_table()
             .wrap_err("error parsing color table")?;
 
-        let mut commands = Vec::new();
-        while let Some(command) = self.command().wrap_err("error parsing command")? {
-            commands.push(command);
-        }
-
-        let mut trailer = Vec::new();
-        self.reader
-            .read_to_end(&mut trailer)
-            .wrap_err("error reading trailing bytes")?;
-
         Ok(File {
             header,
             color_table,
-            commands,
-            trailer,
+            commands: Vec::new(),
+            trailer: Vec::new(),
         })
+    }
+
+    pub fn parse(mut self) -> Result<File> {
+        let mut file = self.parse_header()?;
+
+        self.parse_commands(&mut file)?;
+
+        Ok(file)
+    }
+
+    pub fn parse_commands(&mut self, file: &mut File) -> Result<()> {
+        self.parse_inner(file).wrap_err_with(|| {
+            eyre!(
+                "parsing failed after reading {} bytes",
+                self.reader.bytes_read
+            )
+        })?;
+
+        Ok(())
+    }
+
+    fn parse_inner(&mut self, file: &mut File) -> Result<()> {
+        while let Some(command) = self.command().wrap_err("error parsing command")? {
+            file.commands.push(command);
+        }
+
+        self.reader
+            .read_to_end(&mut file.trailer)
+            .wrap_err("error reading trailing bytes")?;
+
+        Ok(())
     }
 }
 

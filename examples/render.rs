@@ -1,3 +1,4 @@
+use std::io::Write;
 use std::{fs::File, path::PathBuf};
 
 use eyre::Context;
@@ -6,9 +7,11 @@ use tiny_vg::{parser::Parser, render};
 fn main() -> eyre::Result<()> {
     let path = PathBuf::from(std::env::args().nth(1).unwrap());
 
-    let parser = Parser::new(File::open(&path)?);
+    let mut parser = Parser::new(File::open(&path)?);
 
-    let image = parser.parse()?;
+    let mut image = parser.parse_header()?;
+
+    let result = parser.parse_commands(&mut image);
 
     let mut new_path = path.clone();
     new_path.set_extension("png");
@@ -16,6 +19,14 @@ fn main() -> eyre::Result<()> {
     let mut file = File::create(&new_path).wrap_err("failed to create output file")?;
 
     render(&image, &mut file)?;
+
+    let mut dbg_path = path.clone();
+    dbg_path.set_extension("txt");
+
+    let mut dbg_file = File::create(&dbg_path).wrap_err("failed to create output file")?;
+    writeln!(&mut dbg_file, "{:#?}", image)?;
+
+    result?;
 
     Ok(())
 }
