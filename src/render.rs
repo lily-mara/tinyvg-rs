@@ -1,8 +1,8 @@
 use cairo::{Format, ImageSurface};
 use eyre::{Context, Result};
-use kurbo::BezPath;
+use kurbo::{BezPath, Vec2};
 use piet::kurbo::{Point, Size};
-use piet::RenderContext;
+use piet::{FixedLinearGradient, FixedRadialGradient, GradientStop, RenderContext};
 use piet_cairo::CairoRenderContext;
 
 use crate::format::{Command, Segment, SegmentCommand, SegmentCommandKind, Style};
@@ -34,19 +34,70 @@ pub fn render(f: &crate::format::File, writer: &mut impl std::io::Write) -> Resu
     Ok(())
 }
 
+impl crate::format::File {
+    fn brush<R>(&self, rc: &mut R, style: &Style) -> Result<R::Brush>
+    where
+        R: RenderContext,
+    {
+        let brush = match style {
+            Style::FlatColor { color_index } => {
+                rc.solid_brush(self.color_table[*color_index].clone())
+            }
+            Style::LinearGradient {
+                point_0,
+                point_1,
+                color_index_0,
+                color_index_1,
+            } => rc
+                .gradient(FixedLinearGradient {
+                    start: *point_0,
+                    end: *point_1,
+                    stops: vec![
+                        GradientStop {
+                            pos: 0.0,
+                            color: self.color_table[*color_index_0].clone(),
+                        },
+                        GradientStop {
+                            pos: 1.0,
+                            color: self.color_table[*color_index_1].clone(),
+                        },
+                    ],
+                })
+                .map_err(|e| eyre::eyre!("{}", e))?,
+            Style::RadialGradient {
+                point_0,
+                point_1,
+                color_index_0,
+                color_index_1,
+            } => rc
+                .gradient(FixedRadialGradient {
+                    center: *point_0,
+                    origin_offset: Vec2 { x: 0.0, y: 0.0 },
+                    radius: point_0.distance(*point_1),
+                    stops: vec![
+                        GradientStop {
+                            pos: 0.0,
+                            color: self.color_table[*color_index_0].clone(),
+                        },
+                        GradientStop {
+                            pos: 1.0,
+                            color: self.color_table[*color_index_1].clone(),
+                        },
+                    ],
+                })
+                .map_err(|e| eyre::eyre!("{}", e))?,
+        };
+
+        Ok(brush)
+    }
+}
+
 fn draw(f: &crate::format::File, rc: &mut impl RenderContext) -> Result<()> {
     // rc.clear(None, Color::WHITE);
     for cmd in &f.commands {
         match cmd {
             Command::FillPath { fill_style, path } => {
-                let mut brush = rc.solid_brush(piet::Color::rgb8(0, 0, 0));
-
-                match fill_style {
-                    Style::FlatColor { color_index } => {
-                        brush = rc.solid_brush(f.color_table[*color_index].clone());
-                    }
-                    _ => {}
-                }
+                let brush = f.brush(rc, fill_style)?;
 
                 let mut bezier = BezPath::new();
 
@@ -55,16 +106,12 @@ fn draw(f: &crate::format::File, rc: &mut impl RenderContext) -> Result<()> {
 
                     bezier.move_to(pen);
 
-                    // let mut width = 1.0f64;
-
                     for SegmentCommand {
                         kind,
                         line_width: _,
                     } in commands
                     {
-                        // if let Some(new_width) = line_width {
-                        // width = *new_width as f64;
-                        // }
+                        // TODO: line width
 
                         match kind {
                             SegmentCommandKind::Line { end } => {
@@ -85,7 +132,26 @@ fn draw(f: &crate::format::File, rc: &mut impl RenderContext) -> Result<()> {
                                 bezier.curve_to(*control_0, *control_1, *point_1);
                                 pen = *point_1;
                             }
-                            _ => {}
+                            SegmentCommandKind::HorizontalLine { x } => {
+                                let end = Point { x: *x, y: pen.y };
+
+                                bezier.line_to(end);
+                                pen = end;
+                            }
+                            SegmentCommandKind::ArcCircle { .. } => {
+                                // TODO: circle
+                            }
+                            SegmentCommandKind::ArcEllipse { .. } => {
+                                // TODO: ellipse
+                            }
+                            SegmentCommandKind::ClosePath => {
+                                bezier.line_to(*start);
+                                pen = *start;
+                            }
+                            SegmentCommandKind::QuadraticBezier { control, point_1 } => {
+                                bezier.quad_to(*control, *point_1);
+                                pen = *point_1;
+                            }
                         }
                     }
                 }
