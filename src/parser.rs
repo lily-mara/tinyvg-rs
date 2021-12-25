@@ -473,7 +473,7 @@ where
 
         let instruction = raw & 0b0000_0111;
 
-        let has_line_width = (raw & 0b000_1000) > 0;
+        let has_line_width = (raw & 0b001_0000) > 0;
         let line_width = if has_line_width {
             Some(self.read_unit()?)
         } else {
@@ -681,7 +681,7 @@ where
 
         let line_width = self.read_unit()?;
 
-        let path = self.read_path(segment_count as u32)?;
+        let path = self.read_path(segment_count as u32 + 1)?;
 
         Ok(Command::FillPath {
             outline: Some(OutlineStyle {

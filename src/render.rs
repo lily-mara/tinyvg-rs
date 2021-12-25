@@ -17,19 +17,23 @@ pub fn render(f: &crate::format::File, writer: &mut impl std::io::Write) -> Resu
         .wrap_err("failed to create cairo surface")?;
     let cr = cairo::Context::new(&surface).unwrap();
 
-    {
+    let render_result = {
         let mut piet_context = CairoRenderContext::new(&cr);
 
-        draw(f, &mut piet_context).wrap_err("failed to draw tinyvg file")?;
+        let result = draw(f, &mut piet_context).wrap_err("failed to draw tinyvg file");
 
         piet_context
             .finish()
             .map_err(|e| eyre::eyre!("{}", e))
             .wrap_err("failed to finalize piet context")?;
-    }
+
+        result
+    };
 
     surface.flush();
     surface.write_to_png(writer)?;
+
+    render_result?;
 
     Ok(())
 }
@@ -45,14 +49,22 @@ impl crate::format::File {
         }
     }
 
+    fn color(&self, index: usize) -> Result<Color> {
+        self.color_table.get(index).cloned().ok_or_else(|| {
+            eyre::eyre!(
+                "file has {} colors but tried to get index {}",
+                self.color_table.len(),
+                index
+            )
+        })
+    }
+
     fn brush<R>(&self, rc: &mut R, style: &Style) -> Result<R::Brush>
     where
         R: RenderContext,
     {
         let brush = match style {
-            Style::FlatColor { color_index } => {
-                rc.solid_brush(self.color_table[*color_index].clone())
-            }
+            Style::FlatColor { color_index } => rc.solid_brush(self.color(*color_index)?),
             Style::LinearGradient {
                 point_0,
                 point_1,
@@ -65,11 +77,11 @@ impl crate::format::File {
                     stops: vec![
                         GradientStop {
                             pos: 0.0,
-                            color: self.color_table[*color_index_0].clone(),
+                            color: self.color(*color_index_0)?,
                         },
                         GradientStop {
                             pos: 1.0,
-                            color: self.color_table[*color_index_1].clone(),
+                            color: self.color(*color_index_1)?,
                         },
                     ],
                 })
@@ -87,11 +99,11 @@ impl crate::format::File {
                     stops: vec![
                         GradientStop {
                             pos: 0.0,
-                            color: self.color_table[*color_index_0].clone(),
+                            color: self.color(*color_index_0)?,
                         },
                         GradientStop {
                             pos: 1.0,
-                            color: self.color_table[*color_index_1].clone(),
+                            color: self.color(*color_index_1)?,
                         },
                     ],
                 })
