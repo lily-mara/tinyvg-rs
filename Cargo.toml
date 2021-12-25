@@ -7,6 +7,10 @@ description = "Rust parser and renderer for the tinyvg image format"
 authors = ["Lily Mara <lilymara@fastmail.com>"]
 license = "MIT"
 
+[[bench]]
+name = "bench"
+harness = false
+
 [dependencies]
 byteorder = "1.4.3"
 cairo-rs = { version = "0.14.0", features = ["png"] }
@@ -18,5 +22,6 @@ piet-cairo = "0.5.0"
 structopt = "0.3.25"
 
 [dev-dependencies]
+criterion = "0.3.5"
 glob = "0.3.0"
 similar-asserts = "1.1.0"

@@ -86,3 +86,11 @@ data/tiger.tvg       35.942166ms
 
 $ open data/tiger.png
 ```
+
+There is also a criterion benchmarking suite which tests decoding and rendering.
+
+```
+$ cargo bench
+TinyVG/decode/tiger.tvg time:   [135.98 us 136.65 us 137.34 us]
+TinyVG/render/tiger.tvg time:   [27.541 ms 27.629 ms 27.744 ms]
+```
