@@ -2,6 +2,8 @@
 name = "tinyvg"
 version = "0.1.0"
 edition = "2021"
+repository = "https://github.com/lily-mara/tinyvg-rs"
+description = "Rust parser and renderer for the tinyvg image format"
 
 [dependencies]
 byteorder = "1.4.3"
@@ -11,6 +13,7 @@ kurbo = "0.8.3"
 packed_struct = "0.10.0"
 piet = "0.5.0"
 piet-cairo = "0.5.0"
+structopt = "0.3.25"
 
 [dev-dependencies]
 glob = "0.3.0"
