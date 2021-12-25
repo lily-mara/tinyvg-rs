@@ -13,4 +13,5 @@ piet = "0.5.0"
 piet-cairo = "0.5.0"
 
 [dev-dependencies]
+glob = "0.3.0"
 similar-asserts = "1.1.0"

@@ -1,6 +1,6 @@
 use cairo::{Format, ImageSurface};
 use eyre::{Context, Result};
-use kurbo::{Arc, BezPath, SvgArc, Vec2};
+use kurbo::{Arc, BezPath, CubicBez, Line, QuadBez, SvgArc, Vec2};
 use piet::kurbo::{Point, Size};
 use piet::{Color, FixedLinearGradient, FixedRadialGradient, GradientStop, RenderContext};
 use piet_cairo::CairoRenderContext;
@@ -238,13 +238,17 @@ where
 
             match kind {
                 SegmentCommandKind::Line { end } => {
-                    pen = *end;
                     bezier.line_to(*end);
+                    rc.stroke(Line { p0: pen, p1: *end }, &line, line_width);
+
+                    pen = *end;
                 }
                 SegmentCommandKind::VerticalLine { y } => {
                     let end = Point { x: pen.x, y: *y };
 
                     bezier.line_to(end);
+                    rc.stroke(Line { p0: pen, p1: end }, &line, line_width);
+
                     pen = end;
                 }
                 SegmentCommandKind::CubicBezier {
@@ -253,12 +257,20 @@ where
                     point_1,
                 } => {
                     bezier.curve_to(*control_0, *control_1, *point_1);
+                    rc.stroke(
+                        CubicBez::new(pen, *control_0, *control_1, *point_1),
+                        &line,
+                        line_width,
+                    );
+
                     pen = *point_1;
                 }
                 SegmentCommandKind::HorizontalLine { x } => {
                     let end = Point { x: *x, y: pen.y };
 
                     bezier.line_to(end);
+                    rc.stroke(Line { p0: pen, p1: end }, &line, line_width);
+
                     pen = end;
                 }
                 SegmentCommandKind::ArcEllipse {
@@ -287,15 +299,27 @@ where
                     for segment in arc.append_iter(0.2) {
                         bezier.push(segment);
                     }
+                    rc.stroke(&arc, &line, line_width);
 
                     pen = *target;
                 }
                 SegmentCommandKind::ClosePath => {
                     bezier.line_to(*start);
+                    rc.stroke(
+                        Line {
+                            p0: pen,
+                            p1: *start,
+                        },
+                        &line,
+                        line_width,
+                    );
+
                     pen = *start;
                 }
                 SegmentCommandKind::QuadraticBezier { control, point_1 } => {
                     bezier.quad_to(*control, *point_1);
+                    rc.stroke(QuadBez::new(pen, *control, *point_1), &line, line_width);
+
                     pen = *point_1;
                 }
             }
@@ -303,7 +327,6 @@ where
     }
 
     rc.fill(&bezier, &fill);
-    rc.stroke(&bezier, &line, line_width);
 
     Ok(())
 }
