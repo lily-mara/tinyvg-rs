@@ -5,6 +5,7 @@ edition = "2021"
 repository = "https://github.com/lily-mara/tinyvg-rs"
 description = "Rust parser and renderer for the tinyvg image format"
 authors = ["Lily Mara <lilymara@fastmail.com>"]
+license = "MIT"
 
 [dependencies]
 byteorder = "1.4.3"
