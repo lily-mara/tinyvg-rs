@@ -1,21 +1,42 @@
+#![allow(missing_docs)]
+
+//! In-memory representation of a TinyVG file
+
 pub use kurbo::{Line, Point, Rect};
 pub use piet::Color;
 
+/// A single TinyVG file
 #[derive(Debug, PartialEq, Clone)]
-pub struct File {
+pub struct Image {
+    /// Image header
     pub header: Header,
+
+    /// The colors used in this image
     pub color_table: Vec<Color>,
+
+    /// TinyVG commands required to render this image
     pub commands: Vec<Command>,
+
+    /// Remaining data after the TinyVG image ended. Can be used for arbitrary
+    /// metadata, it is not defined by the spec
     pub trailer: Vec<u8>,
 }
 
+/// Types of color values. Only useful for encoding/decoding TinyVG binary
+/// format.
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub enum ColorEncoding {
+    /// RGBA color with 8 bits per channel
     Rgba8888,
+
+    /// RGB color with 5 bits on red channel, 6 bits on green channel, 5 bits on blue channel
     Rgb565,
+
+    /// RGBA color made up of 4 f32 values
     RgbaF32,
 }
 
+/// Styles refer to the color or gradients for a line or filling
 #[derive(Debug, PartialEq, Clone)]
 pub enum Style {
     FlatColor {
@@ -119,25 +140,43 @@ pub enum SegmentCommandKind {
     },
 }
 
+/// Width of certain coordinate values. Only useful for encoding/decoding TinyVG
+/// binary format.
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub enum CoordinateRange {
-    // 16 bits
+    /// 16 bits per coordinate value
     Default,
 
-    // 8 bits
+    /// 8 bits per coordinate value
     Reduced,
 
-    // 32 bits
+    /// 32 bits per coordinate value
     Enhanced,
 }
 
+/// Image header for TinyVG image. Mostly useful for binary encoding/decoding.
 #[derive(Debug, PartialEq, Clone)]
 pub struct Header {
+    /// Version must be 1
     pub version: u8,
+
+    /// Value used when reading `Unit` values in the parser. y
     pub scale: u8,
+
+    /// Binary encoding used for color values. Only useful for encoding/decoding
+    /// TinyVG binary format.
     pub color_encoding: ColorEncoding,
+
+    /// Width of binary values for certain fields. Only useful for
+    /// encoding/decoding TinyVG binary format.
     pub coordinate_range: CoordinateRange,
+
+    /// Width in pixels
     pub width: u32,
+
+    /// Height in pixels
     pub height: u32,
+
+    /// Number of colors in this image. Equivalent to `file.color_table.len()`
     pub color_count: u32,
 }

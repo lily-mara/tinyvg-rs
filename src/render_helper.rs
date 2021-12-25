@@ -1,10 +1,23 @@
+//! Helper function that can render a TinyVG image using only the path to the input file
+
+use std::fs::File;
 use std::io::{BufReader, BufWriter};
-use std::path::Path;
-use std::{fs::File, path::PathBuf};
+use std::path::{Path, PathBuf};
 
 use crate::parser::Parser;
 use eyre::{Context, Result};
 
+/// Render a TinyVG file using input and output path. If the output path is not
+/// specified, it will be automatically determined by adding the `.png` suffix
+/// to the input path
+///
+/// ```
+/// # use tinyvg::render_helper::render;
+/// render(
+///   "data/shield.tvg",
+///   Some("data/shield-render.png".into())
+/// ).unwrap();
+/// ```
 pub fn render(in_path: impl AsRef<Path>, out_path: Option<PathBuf>) -> Result<()> {
     let mut parser = Parser::new(BufReader::new(File::open(&in_path)?));
 

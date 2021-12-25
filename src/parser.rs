@@ -1,3 +1,6 @@
+//! The `parser` module includes the code required to parse a binary TinyVG file
+//! to its in-memory representation.
+
 use std::io::Read;
 
 use byteorder::{LittleEndian, ReadBytesExt};
@@ -6,7 +9,7 @@ use kurbo::{Rect, Size};
 use packed_struct::prelude::*;
 
 use crate::format::{
-    Color, ColorEncoding, Command, CoordinateRange, File, Header, Line, OutlineStyle, Point,
+    Color, ColorEncoding, Command, CoordinateRange, Header, Image, Line, OutlineStyle, Point,
     Segment, SegmentCommand, SegmentCommandKind, Style,
 };
 
@@ -37,6 +40,17 @@ where
     }
 }
 
+/// Used to perform the TinyVG parsing pass from an arbitrary `std::io::Read`.
+///
+/// ```
+/// # use std::fs::File;
+/// # use tinyvg::Parser;
+/// let parser = Parser::new(File::open("data/shield.tvg").unwrap());
+///
+/// let image = parser.parse().unwrap();
+///
+/// dbg!(image);
+/// ```
 pub struct Parser<R> {
     reader: ByteCountReader<R>,
     coordinate_range: CoordinateRange,
@@ -86,6 +100,7 @@ impl<R> Parser<R>
 where
     R: Read,
 {
+    /// Create a new parser wrapping a `std::io::Read`
     pub fn new(reader: R) -> Self {
         Self {
             reader: ByteCountReader::new(reader),
@@ -714,13 +729,45 @@ where
         Ok(Some(command))
     }
 
-    pub fn parse_header(&mut self) -> Result<File> {
+    /// Parse a TinyVG image from the reader
+    ///
+    /// ```
+    /// # use tinyvg::Parser;
+    /// # use std::fs::File;
+    /// let mut parser = Parser::new(File::open("data/shield.tvg").unwrap());
+    ///
+    /// let image = parser.parse().unwrap();
+    /// ```
+    pub fn parse(mut self) -> Result<Image> {
+        let mut image = self.parse_header()?;
+
+        self.parse_commands(&mut image)?;
+
+        Ok(image)
+    }
+
+    /// Parse a TinyVG image header file from the reader. Does not parse any
+    /// commands from the file. To get commands, you must use
+    /// `Parser::parse_commands` after calling this function. Calling these two
+    /// functions together is basically the same as calling `Parser::parse`.
+    /// This function exists so that you can attempt to render a file which
+    /// failed parsing partway through its comands.
+    ///
+    /// ```
+    /// # use tinyvg::Parser;
+    /// # use std::fs::File;
+    /// let mut parser = Parser::new(File::open("data/shield.tvg").unwrap());
+    ///
+    /// let mut image = parser.parse_header().unwrap();
+    /// parser.parse_commands(&mut image).unwrap();
+    /// ```
+    pub fn parse_header(&mut self) -> Result<Image> {
         let header = self.header().wrap_err("error parsing header")?;
         let color_table = self
             .parse_color_table()
             .wrap_err("error parsing color table")?;
 
-        Ok(File {
+        Ok(Image {
             header,
             color_table,
             commands: Vec::new(),
@@ -728,15 +775,21 @@ where
         })
     }
 
-    pub fn parse(mut self) -> Result<File> {
-        let mut file = self.parse_header()?;
-
-        self.parse_commands(&mut file)?;
-
-        Ok(file)
-    }
-
-    pub fn parse_commands(&mut self, file: &mut File) -> Result<()> {
+    /// Parse TinyVG image commands from the reader. The Image can be obtained
+    /// by calling `Parser::parse_header`. Calling these two functions together
+    /// is basically the same as calling `Parser::parse`. This function exists
+    /// so that you can attempt to render a file which failed parsing partway
+    /// through its comands.
+    ///
+    /// ```
+    /// # use tinyvg::Parser;
+    /// # use std::fs::File;
+    /// let mut parser = Parser::new(File::open("data/shield.tvg").unwrap());
+    ///
+    /// let mut image = parser.parse_header().unwrap();
+    /// parser.parse_commands(&mut image).unwrap();
+    /// ```
+    pub fn parse_commands(&mut self, file: &mut Image) -> Result<()> {
         self.parse_inner(file).wrap_err_with(|| {
             eyre!(
                 "parsing failed after reading {} bytes",
@@ -747,7 +800,7 @@ where
         Ok(())
     }
 
-    fn parse_inner(&mut self, file: &mut File) -> Result<()> {
+    fn parse_inner(&mut self, file: &mut Image) -> Result<()> {
         while let Some(command) = self.command().wrap_err("error parsing command")? {
             file.commands.push(command);
         }
@@ -771,48 +824,4 @@ struct ScaleProperties {
     scale: u8,
     color_encoding: ColorEncoding,
     coordinate_range: CoordinateRange,
-}
-
-#[cfg(test)]
-mod tests {
-    use super::Parser;
-    use eyre::Result;
-    use std::{fs::File, io::Read};
-
-    fn parse_test(file_basename: &str) -> Result<()> {
-        let file = File::open(format!("data/{}.tvg", file_basename))?;
-
-        let p = Parser::new(file);
-
-        let _parse_result = p.parse()?;
-
-        let mut text_file = File::open(format!("data/{}.tvgt", file_basename))?;
-        let mut actual_text = String::new();
-
-        text_file.read_to_string(&mut actual_text)?;
-
-        let expected_text = Vec::new();
-        // parse_result.render_text(&mut expected_text)?;
-
-        let expected_text = String::from_utf8(expected_text)?;
-
-        similar_asserts::assert_str_eq!(expected_text, actual_text);
-
-        Ok(())
-    }
-
-    macro_rules! parse_tests {
-        ($($name:ident),*) => {
-            $(
-                #[test]
-                fn $name() -> Result<()> {
-                    parse_test(stringify!($name))?;
-
-                    Ok(())
-                }
-            )*
-        };
-    }
-
-    parse_tests!(everything, shield, flowchart, app_icon);
 }
