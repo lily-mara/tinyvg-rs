@@ -11,11 +11,11 @@ impl crate::format::Image {
     /// Render PNG data to the given `std::io::Write`.
     ///
     /// ```
-    /// # use tinyvg::Parser;
+    /// # use tinyvg::Decoder;
     /// # use std::fs::File;
-    /// let mut parser = Parser::new(File::open("data/shield.tvg").unwrap());
+    /// let mut decoder = Decoder::new(File::open("data/shield.tvg").unwrap());
     ///
-    /// let image = parser.parse().unwrap();
+    /// let image = decoder.decode().unwrap();
     /// let mut file = File::create("data/shield.png").unwrap();
     ///
     /// image.render_png(&mut file).unwrap();

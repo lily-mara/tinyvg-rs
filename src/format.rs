@@ -160,7 +160,7 @@ pub struct Header {
     /// Version must be 1
     pub version: u8,
 
-    /// Value used when reading `Unit` values in the parser. y
+    /// Value used when reading `Unit` values in the decoder. y
     pub scale: u8,
 
     /// Binary encoding used for color values. Only useful for encoding/decoding

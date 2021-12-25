@@ -4,7 +4,7 @@ use std::{
 };
 
 use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
-use tinyvg::Parser;
+use tinyvg::Decoder;
 
 pub fn criterion_benchmark(c: &mut Criterion) {
     let mut g = c.benchmark_group("TinyVG");
@@ -15,15 +15,15 @@ pub fn criterion_benchmark(c: &mut Criterion) {
 
     g.bench_function(BenchmarkId::new("decode", "tiger.tvg"), |b| {
         b.iter(|| {
-            let p = Parser::new(Cursor::new(&data));
+            let p = Decoder::new(Cursor::new(&data));
 
-            black_box(p.parse().unwrap());
+            black_box(p.decode().unwrap());
         })
     });
 
     g.bench_function(BenchmarkId::new("render", "tiger.tvg"), |b| {
-        let p = Parser::new(Cursor::new(&data));
-        let image = p.parse().unwrap();
+        let p = Decoder::new(Cursor::new(&data));
+        let image = p.decode().unwrap();
         let mut data = Vec::new();
 
         b.iter(|| {

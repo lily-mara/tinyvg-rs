@@ -42,15 +42,15 @@ ARGS:
 # Library Usage
 
 ```rust
-use tinyvg::Parser;
+use tinyvg::Decoder;
 use std::fs::File;
 
 fn main() -> eyre::Result<()> {
-    // Build a parser from a `std::io::Read`. Here a file is used, but any type
+    // Build a decoder from a `std::io::Read`. Here a file is used, but any type
     // that implements `Read` can be used.
-    let parser = Parser::new(File::open("data/shield.tvg")?);
+    let decoder = Decoder::new(File::open("data/shield.tvg")?);
 
-    let image = parser.parse()?;
+    let image = decoder.decode()?;
 
     let mut out = File::create("out.png")?;
 
@@ -66,7 +66,7 @@ fn main() -> eyre::Result<()> {
 
 ## Testing
 
-There are some doctests which validate that certain files can be parsed and
+There are some doctests which validate that certain files can be decoded and
 rendered without errors, but there currently isn't much in the way of automated
 testing. I wasn't sure how to effectively write equality tests without writing a
 massive amount of code. There is an example program which will crawl the `data`

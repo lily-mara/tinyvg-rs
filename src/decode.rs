@@ -1,4 +1,4 @@
-//! The `parser` module includes the code required to parse a binary TinyVG file
+//! The `decoder` module includes the code required to decode a binary TinyVG file
 //! to its in-memory representation.
 
 use std::io::Read;
@@ -44,14 +44,14 @@ where
 ///
 /// ```
 /// # use std::fs::File;
-/// # use tinyvg::Parser;
-/// let parser = Parser::new(File::open("data/shield.tvg").unwrap());
+/// # use tinyvg::Decoder;
+/// let decoder = Decoder::new(File::open("data/shield.tvg").unwrap());
 ///
-/// let image = parser.parse().unwrap();
+/// let image = decoder.decode().unwrap();
 ///
 /// dbg!(image);
 /// ```
-pub struct Parser<R> {
+pub struct Decoder<R> {
     reader: ByteCountReader<R>,
     coordinate_range: CoordinateRange,
     color_count: u32,
@@ -96,11 +96,11 @@ enum SegmentCommandVariant {
     QuadraticBezier,
 }
 
-impl<R> Parser<R>
+impl<R> Decoder<R>
 where
     R: Read,
 {
-    /// Create a new parser wrapping a `std::io::Read`
+    /// Create a new decoder wrapping a `std::io::Read`
     pub fn new(reader: R) -> Self {
         Self {
             reader: ByteCountReader::new(reader),
@@ -213,7 +213,7 @@ where
         Ok(result)
     }
 
-    fn parse_color_table(&mut self) -> Result<Vec<Color>> {
+    fn decode_color_table(&mut self) -> Result<Vec<Color>> {
         let mut colors = Vec::new();
 
         for _ in 0..self.color_count {
@@ -729,42 +729,42 @@ where
         Ok(Some(command))
     }
 
-    /// Parse a TinyVG image from the reader
+    /// Decode a TinyVG image from the reader
     ///
     /// ```
-    /// # use tinyvg::Parser;
+    /// # use tinyvg::Decoder;
     /// # use std::fs::File;
-    /// let mut parser = Parser::new(File::open("data/shield.tvg").unwrap());
+    /// let mut decoder = Decoder::new(File::open("data/shield.tvg").unwrap());
     ///
-    /// let image = parser.parse().unwrap();
+    /// let image = decoder.decode().unwrap();
     /// ```
-    pub fn parse(mut self) -> Result<Image> {
-        let mut image = self.parse_header()?;
+    pub fn decode(mut self) -> Result<Image> {
+        let mut image = self.decode_header()?;
 
-        self.parse_commands(&mut image)?;
+        self.decode_commands(&mut image)?;
 
         Ok(image)
     }
 
-    /// Parse a TinyVG image header file from the reader. Does not parse any
+    /// Decode a TinyVG image header file from the reader. Does not decode any
     /// commands from the file. To get commands, you must use
-    /// `Parser::parse_commands` after calling this function. Calling these two
-    /// functions together is basically the same as calling `Parser::parse`.
+    /// `Decoder::decode_commands` after calling this function. Calling these two
+    /// functions together is basically the same as calling `Decoder::decode`.
     /// This function exists so that you can attempt to render a file which
     /// failed parsing partway through its comands.
     ///
     /// ```
-    /// # use tinyvg::Parser;
+    /// # use tinyvg::Decoder;
     /// # use std::fs::File;
-    /// let mut parser = Parser::new(File::open("data/shield.tvg").unwrap());
+    /// let mut decoder = Decoder::new(File::open("data/shield.tvg").unwrap());
     ///
-    /// let mut image = parser.parse_header().unwrap();
-    /// parser.parse_commands(&mut image).unwrap();
+    /// let mut image = decoder.decode_header().unwrap();
+    /// decoder.decode_commands(&mut image).unwrap();
     /// ```
-    pub fn parse_header(&mut self) -> Result<Image> {
+    pub fn decode_header(&mut self) -> Result<Image> {
         let header = self.header().wrap_err("error parsing header")?;
         let color_table = self
-            .parse_color_table()
+            .decode_color_table()
             .wrap_err("error parsing color table")?;
 
         Ok(Image {
@@ -775,22 +775,22 @@ where
         })
     }
 
-    /// Parse TinyVG image commands from the reader. The Image can be obtained
-    /// by calling `Parser::parse_header`. Calling these two functions together
-    /// is basically the same as calling `Parser::parse`. This function exists
+    /// Decode TinyVG image commands from the reader. The Image can be obtained
+    /// by calling `Decoder::decode_header`. Calling these two functions together
+    /// is basically the same as calling `Decoder::decode`. This function exists
     /// so that you can attempt to render a file which failed parsing partway
     /// through its comands.
     ///
     /// ```
-    /// # use tinyvg::Parser;
+    /// # use tinyvg::Decoder;
     /// # use std::fs::File;
-    /// let mut parser = Parser::new(File::open("data/shield.tvg").unwrap());
+    /// let mut decoder = Decoder::new(File::open("data/shield.tvg").unwrap());
     ///
-    /// let mut image = parser.parse_header().unwrap();
-    /// parser.parse_commands(&mut image).unwrap();
+    /// let mut image = decoder.decode_header().unwrap();
+    /// decoder.decode_commands(&mut image).unwrap();
     /// ```
-    pub fn parse_commands(&mut self, file: &mut Image) -> Result<()> {
-        self.parse_inner(file).wrap_err_with(|| {
+    pub fn decode_commands(&mut self, file: &mut Image) -> Result<()> {
+        self.decode_inner(file).wrap_err_with(|| {
             eyre!(
                 "parsing failed after reading {} bytes",
                 self.reader.bytes_read
@@ -800,7 +800,7 @@ where
         Ok(())
     }
 
-    fn parse_inner(&mut self, file: &mut Image) -> Result<()> {
+    fn decode_inner(&mut self, file: &mut Image) -> Result<()> {
         while let Some(command) = self.command().wrap_err("error parsing command")? {
             file.commands.push(command);
         }

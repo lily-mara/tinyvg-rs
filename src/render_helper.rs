@@ -4,7 +4,7 @@ use std::fs::File;
 use std::io::{BufReader, BufWriter};
 use std::path::{Path, PathBuf};
 
-use crate::parser::Parser;
+use crate::decode::Decoder;
 use eyre::{Context, Result};
 
 /// Render a TinyVG file using input and output path. If the output path is not
@@ -19,11 +19,11 @@ use eyre::{Context, Result};
 /// ).unwrap();
 /// ```
 pub fn render(in_path: impl AsRef<Path>, out_path: Option<PathBuf>) -> Result<()> {
-    let mut parser = Parser::new(BufReader::new(File::open(&in_path)?));
+    let mut decoder = Decoder::new(BufReader::new(File::open(&in_path)?));
 
-    let mut image = parser.parse_header()?;
+    let mut image = decoder.decode_header()?;
 
-    let result = parser.parse_commands(&mut image);
+    let result = decoder.decode_commands(&mut image);
 
     let out_path = out_path.unwrap_or_else(|| {
         let mut out_path = in_path.as_ref().to_owned();
