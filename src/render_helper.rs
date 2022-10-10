@@ -18,6 +18,7 @@ use eyre::{Context, Result};
 ///   Some("data/shield-render.png".into())
 /// ).unwrap();
 /// ```
+#[cfg(feature = "render-png")]
 pub fn render(in_path: impl AsRef<Path>, out_path: Option<PathBuf>) -> Result<()> {
     let mut decoder = Decoder::new(BufReader::new(File::open(&in_path)?));
 
