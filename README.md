@@ -62,6 +62,12 @@ fn main() -> eyre::Result<()> {
 }
 ```
 
+## Features
+
+- `render-png` (default) - enables the ability to render TinyVG images into PNG files.
+  Disabling this removes the cairo dependency. This can be useful if you're already using
+  piet with another backend.
+
 # Development
 
 ## Testing
