@@ -1,9 +1,7 @@
-use cairo::{Format, ImageSurface};
 use eyre::{Context, Result};
 use kurbo::{Arc, BezPath, CubicBez, Line, QuadBez, SvgArc, Vec2};
 use piet::kurbo::{Point, Size};
 use piet::{Color, FixedLinearGradient, FixedRadialGradient, GradientStop, RenderContext};
-use piet_cairo::CairoRenderContext;
 
 use crate::format::{Command, OutlineStyle, Segment, SegmentCommand, SegmentCommandKind, Style};
 
@@ -20,7 +18,11 @@ impl crate::format::Image {
     ///
     /// image.render_png(&mut file).unwrap();
     /// ```
+    #[cfg(feature = "render-png")]
     pub fn render_png(&self, writer: &mut impl std::io::Write) -> Result<()> {
+        use cairo::{Format, ImageSurface};
+        use piet_cairo::CairoRenderContext;
+
         let size = Size {
             width: self.header.width as f64,
             height: self.header.height as f64,
