@@ -34,7 +34,7 @@ pub fn render(in_path: impl AsRef<Path>, out_path: Option<PathBuf>) -> Result<()
     });
 
     let mut file =
-        BufWriter::new(File::create(&out_path).wrap_err("failed to create output file")?);
+        BufWriter::new(File::create(out_path).wrap_err("failed to create output file")?);
     image.render_png(&mut file)?;
 
     result?;
