@@ -11,6 +11,11 @@ license = "MIT"
 name = "bench"
 harness = false
 
+[[bin]]
+name = "tinyvg"
+path = "src/main.rs"
+required-features=["render-png"]
+
 [features]
 default = ["render-png"]
 render-png = ["cairo-rs", "piet-cairo"]
