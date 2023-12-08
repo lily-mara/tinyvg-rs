@@ -195,7 +195,7 @@ where
             }
             CoordinateRange::Enhanced => {
                 let x = self.reader.read_u32::<LittleEndian>()?;
-                Ok(x as u32)
+                Ok(x)
             }
         }
     }
@@ -256,14 +256,15 @@ where
         ))
     }
 
+    #[allow(clippy::identity_op)]
     fn color_565(&mut self) -> Result<Color> {
         let rgb = self.reader.read_u16::<LittleEndian>()?;
 
-        let red = (((rgb & 0x001F) >> 0) as f64) / 31.0;
-        let green = (((rgb & 0x07E0) >> 5) as f64) / 63.0;
-        let blue = (((rgb & 0xF800) >> 11) as f64) / 31.0;
+        let r = (((rgb & 0x001F) >> 0) as f64) / 31.0;
+        let g = (((rgb & 0x07E0) >> 5) as f64) / 63.0;
+        let b = (((rgb & 0xF800) >> 11) as f64) / 31.0;
 
-        Ok(Color::rgb(red, green, blue))
+        Ok(Color::rgb(r, g, b))
     }
 
     fn header(&mut self) -> Result<Header> {

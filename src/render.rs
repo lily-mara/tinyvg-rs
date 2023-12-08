@@ -316,7 +316,7 @@ where
                     for segment in arc.append_iter(0.2) {
                         bezier.push(segment);
                     }
-                    rc.stroke(&arc, &line, line_width);
+                    rc.stroke(arc, &line, line_width);
 
                     pen = *target;
                 }
